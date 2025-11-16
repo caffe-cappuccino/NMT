@@ -1,68 +1,40 @@
-# ===============================================================
-#     PREMIUM MT DASHBOARD — Neural Metrics Only
-#     Metrics included:
-#     - BLEU (surface)
-#     - BERTScore F1
-#     - Sentence-BERT Similarity (cosine)
-#     - Semantic Similarity (BERTScore + SBERT avg)
-#     - Hallucination Score (1 – Semantic)
-# ===============================================================
-
+# app.py
 import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 import requests
 from streamlit_lottie import st_lottie
-from sentence_transformers import SentenceTransformer, util
 
-# Lightweight neural models
-try:
-    from bert_score import score as bert_score_fn
-except:
-    bert_score_fn = None
-
-import torch
-
-# Your models
+# Import your model wrappers and scoring utils
 from models.baseline_model import baseline_translate
 from models.eact_model import eact_translate
 from models.rgcld_model import rgcld_translate
+from utils.scoring import compute_bleu, compute_efc
 
-# Simple BLEU
-from utils.scoring import compute_bleu
+# --------------------------------------------------------------
+# Page config
+# --------------------------------------------------------------
+st.set_page_config(page_title="Ultra-Premium MT Dashboard", layout="wide")
 
-# -----------------------------------------------------------
-# Load SBERT model once
-# -----------------------------------------------------------
-@st.cache_resource
-def load_sbert():
-    return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-
-sbert_model = load_sbert()
-
-# -----------------------------------------------------------
-# Page Config
-# -----------------------------------------------------------
-st.set_page_config(page_title="Neural MT Dashboard", layout="wide")
-
-# -----------------------------------------------------------
-# Lottie Loader
-# -----------------------------------------------------------
+# --------------------------------------------------------------
+# Lottie loader
+# --------------------------------------------------------------
 def load_lottie(url):
     try:
-        r = requests.get(url)
+        r = requests.get(url, timeout=5)
         if r.status_code == 200:
             return r.json()
     except:
         return None
+    return None
 
-# -----------------------------------------------------------
-# Theme System
-# -----------------------------------------------------------
+# --------------------------------------------------------------
+# Themes
+# --------------------------------------------------------------
 THEMES = {
     "Dark": {
         "bg": "linear-gradient(135deg, #0b1020, #131b2f)",
-        "card": "rgba(255,255,255,0.07)",
+        "card_bg": "rgba(255,255,255,0.07)",
         "text": "#FFFFFF",
         "muted": "#BFC8D6",
         "acc1": "#4facfe",
@@ -71,9 +43,9 @@ THEMES = {
     },
     "Light": {
         "bg": "linear-gradient(135deg, #ffffff, #f0f7ff)",
-        "card": "rgba(0,0,0,0.05)",
+        "card_bg": "rgba(0,0,0,0.05)",
         "text": "#101624",
-        "muted": "#444",
+        "muted": "#444444",
         "acc1": "#0b78d1",
         "acc2": "#16a34a",
         "acc3": "#d63384"
@@ -83,265 +55,237 @@ THEMES = {
 theme = st.sidebar.selectbox("Theme", ["Dark", "Light"])
 C = THEMES[theme]
 
-# -----------------------------------------------------------
+# --------------------------------------------------------------
 # CSS
-# -----------------------------------------------------------
+# --------------------------------------------------------------
 st.markdown(f"""
 <style>
-body {{ background:{C['bg']}; color:{C['text']}; }}
-
+body {{
+    background:{C['bg']};
+    color:{C['text']};
+}}
 .kpi-glass {{
-  background:{C['card']};
-  padding:20px;
-  border-radius:14px;
+  background:{C['card_bg']};
   backdrop-filter:blur(10px);
-  border:1px solid rgba(255,255,255,0.18);
+  padding:20px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.12);
+  box-shadow:0 8px 24px rgba(0,0,0,0.35);
 }}
-
 .kpi-circle {{
-  width:140px;height:140px;border-radius:50%;
-  background:conic-gradient(var(--color) calc(var(--value) * 1%), #333 0%);
-  display:flex;align-items:center;justify-content:center;margin:auto;
+    width:140px;height:140px;border-radius:50%;
+    background: conic-gradient(var(--color) calc(var(--value) * 1%), #333 0%);
+    display:flex;align-items:center;justify-content:center;
+    margin:auto;box-shadow:0 0 18px var(--color-glow);
 }}
-
 .kpi-circle-inner {{
-  width:100px;height:100px;border-radius:50%;
-  background:#0d0d0d;color:white;display:flex;
-  align-items:center;justify-content:center;font-size:26px;font-weight:700;
+    width:100px;height:100px;
+    background: rgba(0,0,0,0.55);
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;font-weight:700;color:white;
 }}
-
-.metric-bar {{
-  height:16px;border-radius:10px;background:#333;
-}}
-
-.metric-bar-fill {{
-  height:100%;border-radius:10px;animation:fillBar 1.6s ease forwards;
-}}
-
-@keyframes fillBar {{ from {{width:0%;}} to {{width:var(--width);}} }}
-
-.small-muted {{ color:{C['muted']}; font-size:13px; }}
+.metric-bar {{ height:16px;border-radius:10px;background:#333; overflow:hidden; }}
+.metric-bar-fill {{ height:100%; border-radius:10px; transition: width 1.6s ease; }}
 </style>
 """, unsafe_allow_html=True)
 
-# -----------------------------------------------------------
+# --------------------------------------------------------------
 # Header with Lottie
-# -----------------------------------------------------------
+# --------------------------------------------------------------
 lottie = load_lottie("https://assets7.lottiefiles.com/packages/lf20_jcikwtux.json")
-
-h1, h2 = st.columns([1,4])
-with h1:
-    if lottie: st_lottie(lottie, height=120)
-with h2:
-    st.markdown(f"<h1 style='color:{C['text']}'>🚀 Neural MT Evaluation Dashboard</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p class='small-muted'>BERTScore • SBERT Similarity • Semantic Score • Hallucination</p>", unsafe_allow_html=True)
+col1, col2 = st.columns([1,4])
+with col1:
+    if lottie:
+        st_lottie(lottie, height=120)
+with col2:
+    st.markdown(f"<h1 style='color:{C['text']}; margin:0;'>🚀 Ultra-Premium MT Evaluation Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color:{C['muted']};'>Single click: run evaluation → all tabs update • BLEU & EFC focused 3D line</div>", unsafe_allow_html=True)
 
 st.write("---")
 
-# -----------------------------------------------------------
-# Input Box
-# -----------------------------------------------------------
-text = st.text_area("Enter text:", height=140)
+# --------------------------------------------------------------
+# Input
+# --------------------------------------------------------------
+text = st.text_area("Enter text to evaluate:", height=140)
 
-# -----------------------------------------------------------
-# Metric functions
-# -----------------------------------------------------------
+# --------------------------------------------------------------
+# Metric helper
+# --------------------------------------------------------------
+def get_metrics(src_text, out_text):
+    bleu = compute_bleu(src_text, out_text)
+    efc = compute_efc(src_text, out_text)
+    halluc = round(1 - efc, 3)
+    semantic = round((bleu + efc) / 2, 3)
+    # clip into [0,1]
+    bleu = float(np.clip(bleu, 0.0, 1.0))
+    efc = float(np.clip(efc, 0.0, 1.0))
+    halluc = float(np.clip(halluc, 0.0, 1.0))
+    semantic = float(np.clip(semantic, 0.0, 1.0))
+    return {"BLEU": bleu, "EFC": efc, "Hallucination": halluc, "Semantic": semantic}
 
-def bert_score_single(ref, hyp):
-    if bert_score_fn is None:
-        return None
-    P, R, F1 = bert_score_fn([hyp], [ref], lang="en", rescale_with_baseline=True)
-    return round(float(F1[0]), 3)
-
-def sbert_similarity(ref, hyp):
-    emb_ref = sbert_model.encode(ref, convert_to_tensor=True)
-    emb_hyp = sbert_model.encode(hyp, convert_to_tensor=True)
-    sim = util.cos_sim(emb_ref, emb_hyp).item()
-    return round(float(sim), 3)
-
-def compute_all(ref, hyp):
-    bleu = compute_bleu(ref, hyp)  # small, surface metric
-    bert = bert_score_single(ref, hyp)
-    sbert = sbert_similarity(ref, hyp)
-
-    # Semantic score = average of two neural similarities
-    semantic = round((bert + sbert) / 2, 3)
-
-    halluc = round(1 - semantic, 3)
-
-    return {
-        "BLEU": bleu,
-        "BERT": bert,
-        "SBERT": sbert,
-        "Semantic": semantic,
-        "Hallucination": halluc
-    }
-
-# -----------------------------------------------------------
-# RUN BUTTON
-# -----------------------------------------------------------
+# --------------------------------------------------------------
+# Run evaluation button (single control)
+# --------------------------------------------------------------
 if st.button("Run Evaluation"):
     if not text.strip():
-        st.error("Enter text first.")
+        st.error("Please enter text to evaluate.")
     else:
-        # run the models
+        # run (hidden) model inference
         out_b = baseline_translate(text)
         out_e = eact_translate(text)
         out_r = rgcld_translate(text)
 
-        mB = compute_all(text, out_b)
-        mE = compute_all(text, out_e)
-        mR = compute_all(text, out_r)
+        mB = get_metrics(text, out_b)
+        mE = get_metrics(text, out_e)
+        mR = get_metrics(text, out_r)
 
+        # ----------------------------------------------------------
         # Tabs
+        # ----------------------------------------------------------
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "💎 KPI Rings",
-            "📈 3D Trajectory",
-            "🧭 Radar",
-            "📉 Bars",
-            "📊 Table"
+            "📈 3D BLEU–EFC Line",
+            "🧭 Radar Comparison",
+            "📉 Advanced Metrics",
+            "📊 Comparison Table"
         ])
 
-        # -----------------------------------------------------------
-        # TAB 1 — KPI RINGS
-        # -----------------------------------------------------------
+        # ----------------------------------------------------------
+        # Tab 1: KPI Rings
+        # ----------------------------------------------------------
         with tab1:
             c1, c2, c3 = st.columns(3)
-            for (name, m, acc), col in zip(
+            for (title, mat, accent), col in zip(
                 [("Baseline", mB, C['acc1']),
                  ("EACT", mE, C['acc2']),
                  ("RG-CLD", mR, C['acc3'])],
                 [c1, c2, c3]
             ):
+                bval = mat["BLEU"]
                 col.markdown(f"""
-                <div class='kpi-glass'>
-                  <h3 style='color:{acc};text-align:center'>{name}</h3>
-                  <div class='kpi-circle' style="--value:{m['Semantic']*100};--color:{acc}">
-                    <div class='kpi-circle-inner'>{m['Semantic']}</div>
+                <div class="kpi-glass">
+                  <h3 style='text-align:center; color:{accent}; margin:0'>{title}</h3>
+                  <div class="kpi-circle" style="--value:{bval*100}; --color:{accent}; --color-glow:{accent}55;">
+                    <div class="kpi-circle-inner">{bval}</div>
                   </div>
-                  <p class='small-muted' style='text-align:center'>Semantic Score</p>
-                  <p class='small-muted'>BERTScore: <b style='color:{C['text']}'>{m['BERT']}</b></p>
-                  <p class='small-muted'>SBERT Sim: <b style='color:{C['text']}'>{m['SBERT']}</b></p>
+                  <p style='text-align:center; color:{C['muted']}; margin-top:8px;'>BLEU Score</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-        # -----------------------------------------------------------
-        # TAB 2 — 3D TRAJECTORY (Semantic space)
-        # -----------------------------------------------------------
+        # ----------------------------------------------------------
+        # Tab 2: Enhanced 3D BLEU–EFC Line (smooth gradient + dotted + mesh + planes)
+        # ----------------------------------------------------------
         with tab2:
-            x = [mB["Semantic"], mE["Semantic"], mR["Semantic"]]
-            y = [mB["BERT"], mE["BERT"], mR["BERT"]]
-            z = [mB["SBERT"], mE["SBERT"], mR["SBERT"]]
+            st.markdown("### 📈 3D BLEU–EFC Trajectory — smooth gradient line with markers & mesh")
+
+            # Coordinates (BLEU vs EFC). Use depth just to separate points visually.
+            X = [mB["BLEU"], mE["BLEU"], mR["BLEU"]]
+            Y = [mB["EFC"],  mE["EFC"],  mR["EFC"]]
+            Z = [0.0, 0.5, 1.0]  # depth positions for visual clarity
             labels = ["Baseline", "EACT", "RG-CLD"]
 
-            xs = np.linspace(x[0], x[-1], 80)
-            ys = np.linspace(y[0], y[-1], 80)
-            zs = np.linspace(z[0], z[-1], 80)
+            # Create fine-grained interpolation for smooth curve
+            t_original = np.linspace(0, 1, len(X))
+            t_fine = np.linspace(0, 1, 200)
+            xs = np.interp(t_fine, t_original, X)
+            ys = np.interp(t_fine, t_original, Y)
+            zs = np.interp(t_fine, t_original, Z)
 
+            # 3D figure
             fig = go.Figure()
 
+            # Gradient colored line (colorscale mapped to BLEU values along the curve)
             fig.add_trace(go.Scatter3d(
                 x=xs, y=ys, z=zs,
-                mode="lines",
-                line=dict(width=6, color=np.linspace(0,1,80), colorscale="Rainbow", dash="dot")
+                mode='lines',
+                line=dict(
+                    width=8,
+                    color=xs,               # color mapped to BLEU across curve
+                    colorscale='Turbo',
+                    showscale=False,
+                    dash='dot'              # dotted effect
+                ),
+                hoverinfo='none',
+                name='Trajectory'
             ))
 
+            # Add colored markers with white outline for model points
             fig.add_trace(go.Scatter3d(
-                x=x, y=y, z=z,
-                mode="markers+text",
+                x=X, y=Y, z=Z,
+                mode='markers+text',
+                marker=dict(size=9, color=[C['acc1'], C['acc2'], C['acc3']], symbol='circle', line=dict(width=2, color='white')),
                 text=labels,
-                textposition="top center",
-                marker=dict(size=7, color=[0,0.5,1], colorscale="Rainbow")
+                textposition='top center',
+                name='Models'
             ))
 
+            # Add transparent planes for BLEU-EFC axes (visual ground)
+            # Plane at z=0
+            xx, yy = np.meshgrid(np.linspace(0,1,6), np.linspace(0,1,6))
+            zz0 = np.zeros_like(xx)
+            fig.add_trace(go.Surface(x=xx, y=yy, z=zz0, showscale=False, opacity=0.10, colorscale=[[0, 'rgba(100,100,100,0.12)'], [1, 'rgba(200,200,200,0.02)']]))
+
+            # Add a secondary faint mesh surface tilted slightly as a boundary
+            zz1 = 0.2 + 0.1 * (xx + yy)
+            fig.add_trace(go.Surface(x=xx, y=yy, z=zz1, showscale=False, opacity=0.06, colorscale='Blues'))
+
+            # Layout polish
             fig.update_layout(
                 scene=dict(
-                    xaxis_title="Semantic",
-                    yaxis_title="BERTScore",
-                    zaxis_title="SBERT Similarity"
+                    xaxis=dict(title='BLEU', range=[0, 1], backgroundcolor='rgba(0,0,0,0)'),
+                    yaxis=dict(title='EFC', range=[0, 1], backgroundcolor='rgba(0,0,0,0)'),
+                    zaxis=dict(title='Depth', backgroundcolor='rgba(0,0,0,0)', showticklabels=False),
+                    aspectmode='auto'
                 ),
-                height=620
+                margin=dict(l=0, r=0, t=60, b=0),
+                height=640,
+                showlegend=False
             )
+
             st.plotly_chart(fig, use_container_width=True)
 
-        # -----------------------------------------------------------
-        # TAB 3 — RADAR
-        # -----------------------------------------------------------
+        # ----------------------------------------------------------
+        # Tab 3: Radar comparison
+        # ----------------------------------------------------------
         with tab3:
-            keys = ["BLEU", "BERT", "SBERT", "Semantic", "Hallucination"]
-
-            def vec(m):
-                return [m[k] if m[k] is not None else 0 for k in keys]
-
+            cats = ["BLEU", "EFC", "Hallucination", "Semantic"]
             figR = go.Figure()
-            figR.add_trace(go.Scatterpolar(r=vec(mB), theta=keys, fill='toself', name='Baseline'))
-            figR.add_trace(go.Scatterpolar(r=vec(mE), theta=keys, fill='toself', name='EACT'))
-            figR.add_trace(go.Scatterpolar(r=vec(mR), theta=keys, fill='toself', name='RG-CLD'))
-
+            figR.add_trace(go.Scatterpolar(r=[mB[c] for c in cats], theta=cats, fill='toself', name='Baseline'))
+            figR.add_trace(go.Scatterpolar(r=[mE[c] for c in cats], theta=cats, fill='toself', name='EACT'))
+            figR.add_trace(go.Scatterpolar(r=[mR[c] for c in cats], theta=cats, fill='toself', name='RG-CLD'))
             figR.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0,1])), height=620)
             st.plotly_chart(figR, use_container_width=True)
 
-        # -----------------------------------------------------------
-        # TAB 4 — Animated Bars
-        # -----------------------------------------------------------
+        # ----------------------------------------------------------
+        # Tab 4: Advanced Metrics (animated bars)
+        # ----------------------------------------------------------
         with tab4:
             colA, colB = st.columns(2)
 
             with colA:
-                st.markdown("### Neural Similarities (BERTScore / SBERT)")
-                for name, m, clr in [("Baseline", mB, C['acc1']), ("EACT", mE, C['acc2']), ("RG-CLD", mR, C['acc3'])]:
-                    v1 = m["BERT"]
-                    v2 = m["SBERT"]
-                    st.markdown(f"<b>{name}</b>", unsafe_allow_html=True)
-
-                    st.markdown(f"""
-                    <div class='metric-bar'>
-                      <div class='metric-bar-fill' style="--width:{v1*100}%; background:{clr};"></div>
-                    </div>
-                    <div class='small-muted'>BERTScore: {v1}</div><br>
-                    """, unsafe_allow_html=True)
-
-                    st.markdown(f"""
-                    <div class='metric-bar'>
-                      <div class='metric-bar-fill' style="--width:{v2*100}%; background:{clr};"></div>
-                    </div>
-                    <div class='small-muted'>SBERT Similarity: {v2}</div><br>
-                    """, unsafe_allow_html=True)
+                st.markdown("### Hallucination Rate (Lower = Better)")
+                for name, metrics, color in [("Baseline", mB, "#ff4e50"), ("EACT", mE, "#ffa600"), ("RG-CLD", mR, "#ff2a68")]:
+                    val = metrics["Hallucination"]
+                    st.markdown(f"<div style='font-weight:700'>{name}: {val}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{val*100}%; background:{color};'></div></div><br>", unsafe_allow_html=True)
 
             with colB:
-                st.markdown("### Semantic + Hallucination")
-                for name, m, clr in [("Baseline", mB, "#ff4e50"), ("EACT", mE, "#ff9500"), ("RG-CLD", mR, "#ff2a68")]:
-                    sem = m["Semantic"]
-                    hal = m["Hallucination"]
+                st.markdown("### Semantic Similarity (Higher = Better)")
+                for name, metrics, color in [("Baseline", mB, "#30cfd0"), ("EACT", mE, "#6a5acd"), ("RG-CLD", mR, "#4facfe")]:
+                    val = metrics["Semantic"]
+                    st.markdown(f"<div style='font-weight:700'>{name}: {val}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{val*100}%; background:{color};'></div></div><br>", unsafe_allow_html=True)
 
-                    st.markdown(f"<b>{name}</b>", unsafe_allow_html=True)
-
-                    st.markdown(f"""
-                    <div class='metric-bar'>
-                      <div class='metric-bar-fill' style="--width:{sem*100}%; background:{clr};"></div>
-                    </div>
-                    <div class='small-muted'>Semantic: {sem}</div><br>
-                    """, unsafe_allow_html=True)
-
-                    st.markdown(f"""
-                    <div class='metric-bar'>
-                      <div class='metric-bar-fill' style="--width:{hal*100}%; background:{clr};"></div>
-                    </div>
-                    <div class='small-muted'>Hallucination: {hal}</div><br>
-                    """, unsafe_allow_html=True)
-
-        # -----------------------------------------------------------
-        # TAB 5 — TABLE
-        # -----------------------------------------------------------
+        # ----------------------------------------------------------
+        # Tab 5: Comparison table
+        # ----------------------------------------------------------
         with tab5:
-            st.write("### Full Metric Table")
+            st.write("### Model Comparison Matrix")
             st.table({
                 "Model": ["Baseline", "EACT", "RG-CLD"],
                 "BLEU": [mB["BLEU"], mE["BLEU"], mR["BLEU"]],
-                "BERTScore": [mB["BERT"], mE["BERT"], mR["BERT"]],
-                "SBERT Similarity": [mB["SBERT"], mE["SBERT"], mR["SBERT"]],
-                "Semantic Score": [mB["Semantic"], mE["Semantic"], mR["Semantic"]],
-                "Hallucination": [mB["Hallucination"], mE["Hallucination"], mR["Hallucination"]]
+                "EFC": [mB["EFC"], mE["EFC"], mR["EFC"]],
+                "Hallucination": [mB["Hallucination"], mE["Hallucination"], mR["Hallucination"]],
+                "Semantic": [mB["Semantic"], mE["Semantic"], mR["Semantic"]],
             })
-
-        st.success("Evaluation complete ✔")
