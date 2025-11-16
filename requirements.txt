@@ -1,6 +1,6 @@
 streamlit
-matplotlib
+plotly
+streamlit_lottie
+requests
 numpy
-transformers
-sentencepiece
-torch
+matplotlib
