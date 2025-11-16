@@ -6,7 +6,7 @@ import requests
 from streamlit_lottie import st_lottie
 import time
 
-# Import model wrappers + scoring utils
+# Import your model wrappers and scoring utils
 from models.baseline_model import baseline_translate
 from models.eact_model import eact_translate
 from models.rgcld_model import rgcld_translate
@@ -27,8 +27,8 @@ def load_lottie(url):
     except:
         return None
 
-loading_animation = load_lottie("https://assets2.lottiefiles.com/packages/lf20_usmfx6bp.json")
 header_animation = load_lottie("https://assets7.lottiefiles.com/packages/lf20_jcikwtux.json")
+loading_animation = load_lottie("https://assets2.lottiefiles.com/packages/lf20_usmfx6bp.json")
 
 # --------------------------------------------------------------
 # THEMES
@@ -58,10 +58,11 @@ theme = st.sidebar.selectbox("Theme", ["Dark", "Light"])
 C = THEMES[theme]
 
 # --------------------------------------------------------------
-# CSS + TYPEWRITER
+# CSS + TYPEWRITER CAPTION
 # --------------------------------------------------------------
 st.markdown(f"""
 <style>
+
 body {{
     background:{C['bg']};
     color:{C['text']};
@@ -140,12 +141,11 @@ st.write("---")
 text = st.text_area("Enter text to evaluate:", height=140)
 
 # --------------------------------------------------------------
-# METRICS
+# METRIC FUNCTION
 # --------------------------------------------------------------
-def get_metrics(src_text, out_text):
-    bleu = compute_bleu(src_text, out_text)
-    efc = compute_efc(src_text, out_text)
-
+def get_metrics(src, out):
+    bleu = compute_bleu(src, out)
+    efc = compute_efc(src, out)
     halluc = 1 - efc
     semantic = (bleu + efc) / 2
 
@@ -153,37 +153,40 @@ def get_metrics(src_text, out_text):
         "BLEU": float(np.clip(bleu, 0, 1)),
         "EFC": float(np.clip(efc, 0, 1)),
         "Hallucination": float(np.clip(halluc, 0, 1)),
-        "Semantic": float(np.clip(semantic, 0, 1))
+        "Semantic": float(np.clip(semantic, 0, 1)),
     }
 
 # --------------------------------------------------------------
-# RUN BUTTON + INLINE LOADING ANIMATION
+# RUN BUTTON + FIXED INLINE LOADING ANIMATION
 # --------------------------------------------------------------
-
-loading_placeholder = st.empty()   # << animation appears HERE
+loading_placeholder = st.empty()  # animation will appear here
 
 if st.button("Run Evaluation"):
+
     if not text.strip():
         st.error("Please enter text first.")
+
     else:
 
-        # Show loading animation BELOW button
+        # 1. Show loading animation immediately below button
         with loading_placeholder:
             if loading_animation:
-                st_lottie(loading_animation, height=180)
+                st_lottie(loading_animation, height=150, key="loadingAnim")
 
-        time.sleep(1.5)
+        # IMPORTANT: Give Streamlit a moment to render the animation
+        time.sleep(0.3)
 
-        # Run models
+        # 2. Run translations
         out_b = baseline_translate(text)
         out_e = eact_translate(text)
         out_r = rgcld_translate(text)
 
+        # 3. Compute metrics
         mB = get_metrics(text, out_b)
         mE = get_metrics(text, out_e)
         mR = get_metrics(text, out_r)
 
-        # Remove animation
+        # 4. Remove loading animation
         loading_placeholder.empty()
 
         # ----------------------------------------------------------
@@ -198,36 +201,39 @@ if st.button("Run Evaluation"):
         ])
 
         # ----------------------------------------------------------
-        # TAB 1 – KPI RINGS
+        # TAB 1 — KPI Rings
         # ----------------------------------------------------------
         with tab1:
             c1, c2, c3 = st.columns(3)
-            for (title, metrics, accent), col in zip(
+            for (name, m, accent), col in zip(
                 [("Baseline", mB, C['acc1']),
                  ("EACT", mE, C['acc2']),
                  ("RG-CLD", mR, C['acc3'])],
                 [c1, c2, c3]
             ):
-                bval = metrics["BLEU"]
+
+                bleu_val = m["BLEU"]
+
                 col.markdown(f"""
                 <div class="kpi-glass">
-                  <h3 style='text-align:center; color:{accent}'>{title}</h3>
-                  <div class="kpi-circle" style="--value:{bval*100}; --color:{accent}; --color-glow:{accent}55;">
-                    <div class="kpi-circle-inner">{bval}</div>
-                  </div>
-                  <p style='text-align:center; color:{C['muted']}; margin-top:8px;'>BLEU Score</p>
+                    <h3 style='text-align:center; color:{accent}'>{name}</h3>
+                    <div class="kpi-circle" style="--value:{bleu_val*100}; --color:{accent}; --color-glow:{accent}55;">
+                        <div class="kpi-circle-inner">{bleu_val}</div>
+                    </div>
+                    <p style='text-align:center; color:{C['muted']}; margin-top:8px;'>BLEU Score</p>
                 </div>
                 """, unsafe_allow_html=True)
 
         # ----------------------------------------------------------
-        # TAB 2 – 3D BLEU–EFC LINE
+        # TAB 2 — 3D BLEU–EFC LINE
         # ----------------------------------------------------------
         with tab2:
             st.markdown("### 📈 3D BLEU–EFC Trajectory (Gradient, Dotted, Mesh)")
 
             X = [mB["BLEU"], mE["BLEU"], mR["BLEU"]]
-            Y = [mB["EFC"], mE["EFC"], mR["EFC"]]
+            Y = [mB["EFC"],  mE["EFC"],  mR["EFC"]]
             Z = [0, 0.5, 1]
+
             labels = ["Baseline", "EACT", "RG-CLD"]
 
             t_original = np.linspace(0, 1, len(X))
@@ -249,8 +255,7 @@ if st.button("Run Evaluation"):
             fig.add_trace(go.Scatter3d(
                 x=X, y=Y, z=Z,
                 mode='markers+text',
-                marker=dict(size=10, color=[C['acc1'], C['acc2'], C['acc3']],
-                            line=dict(width=2, color='white')),
+                marker=dict(size=10, color=[C['acc1'], C['acc2'], C['acc3']], line=dict(color="white", width=2)),
                 text=labels,
                 textposition='top center'
             ))
@@ -259,7 +264,7 @@ if st.button("Run Evaluation"):
             fig.add_trace(go.Surface(
                 x=xx, y=yy, z=np.zeros_like(xx),
                 opacity=0.1, showscale=False,
-                colorscale=[[0,'rgba(130,130,130,0.15)'],[1,'rgba(200,200,200,0.02)']]
+                colorscale=[[0,'rgba(130,130,130,0.13)'],[1,'rgba(200,200,200,0.02)']]
             ))
 
             fig.update_layout(
@@ -274,12 +279,12 @@ if st.button("Run Evaluation"):
             st.plotly_chart(fig, use_container_width=True)
 
         # ----------------------------------------------------------
-        # TAB 3 – RADAR
+        # TAB 3 — RADAR CHART
         # ----------------------------------------------------------
         with tab3:
             cats = ["BLEU", "EFC", "Hallucination", "Semantic"]
-            figR = go.Figure()
 
+            figR = go.Figure()
             figR.add_trace(go.Scatterpolar(r=[mB[c] for c in cats], theta=cats, fill='toself', name="Baseline"))
             figR.add_trace(go.Scatterpolar(r=[mE[c] for c in cats], theta=cats, fill='toself', name="EACT"))
             figR.add_trace(go.Scatterpolar(r=[mR[c] for c in cats], theta=cats, fill='toself', name="RG-CLD"))
@@ -292,7 +297,7 @@ if st.button("Run Evaluation"):
             st.plotly_chart(figR, use_container_width=True)
 
         # ----------------------------------------------------------
-        # TAB 4 – ADVANCED METRICS
+        # TAB 4 — ADVANCED METRICS
         # ----------------------------------------------------------
         with tab4:
             colA, colB = st.columns(2)
@@ -304,9 +309,9 @@ if st.button("Run Evaluation"):
                     ("EACT", mE, "#ffa600"),
                     ("RG-CLD", mR, "#ff2a68")
                 ]:
-                    val = metrics["Hallucination"]
-                    st.markdown(f"<b>{name}</b>: {val}", unsafe_allow_html=True)
-                    st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{val*100}%; background:{color};'></div></div><br>", unsafe_allow_html=True)
+                    v = metrics["Hallucination"]
+                    st.markdown(f"<b>{name}</b>: {v}", unsafe_allow_html=True)
+                    st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{v*100}%; background:{color};'></div></div><br>", unsafe_allow_html=True)
 
             with colB:
                 st.markdown("### Semantic Similarity")
@@ -315,12 +320,12 @@ if st.button("Run Evaluation"):
                     ("EACT", mE, "#6a5acd"),
                     ("RG-CLD", mR, "#4facfe")
                 ]:
-                    val = metrics["Semantic"]
-                    st.markdown(f"<b>{name}</b>: {val}", unsafe_allow_html=True)
-                    st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{val*100}%; background:{color};'></div></div><br>", unsafe_allow_html=True)
+                    v = metrics["Semantic"]
+                    st.markdown(f"<b>{name}</b>: {v}", unsafe_allow_html=True)
+                    st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{v*100}%; background:{color};'></div></div><br>", unsafe_allow_html=True)
 
         # ----------------------------------------------------------
-        # TAB 5 – TABLE
+        # TAB 5 — TABLE VIEW
         # ----------------------------------------------------------
         with tab5:
             st.write("### Model Comparison Matrix")
