@@ -1,23 +1,23 @@
 import streamlit as st
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 import numpy as np
+import plotly.graph_objects as go
 import requests
 from streamlit_lottie import st_lottie
-import matplotlib.pyplot as plt
 
 from models.baseline_model import baseline_translate
 from models.eact_model import eact_translate
 from models.rgcld_model import rgcld_translate
 from utils.scoring import compute_bleu, compute_efc
 
-# ---------------------------
-# Page Config
-# ---------------------------
-st.set_page_config(page_title="Next-Level MT Dashboard", layout="wide")
+# --------------------------------------------------------------
+# PAGE CONFIG
+# --------------------------------------------------------------
+st.set_page_config(page_title="Premium MT Evaluation Dashboard", layout="wide")
 
-# ---------------------------
-# Load Lottie
-# ---------------------------
+# --------------------------------------------------------------
+# LOAD LOTTIE ANIMATION
+# --------------------------------------------------------------
 def load_lottieurl(url: str):
     try:
         r = requests.get(url)
@@ -25,255 +25,274 @@ def load_lottieurl(url: str):
             return r.json()
     except:
         return None
+    return None
 
-# ---------------------------
-# Themes
-# ---------------------------
+# --------------------------------------------------------------
+# THEMES
+# --------------------------------------------------------------
 THEMES = {
     "Dark": {
-        "bg": "linear-gradient(135deg, #0b1020, #0f1724)",
-        "card": "rgba(255,255,255,0.06)",
+        "bg": "linear-gradient(135deg, #0b1020, #131b2f)",
+        "card_bg": "rgba(255,255,255,0.07)",
         "text": "#FFFFFF",
         "muted": "#BFC8D6",
-        "a1": "#4facfe",
-        "a2": "#43e97b",
-        "a3": "#fa709a"
+        "accent1": "#4facfe",
+        "accent2": "#43e97b",
+        "accent3": "#fa709a"
     },
     "Light": {
-        "bg": "linear-gradient(135deg, #ffffff, #f0f6ff)",
-        "card": "rgba(0,0,0,0.04)",
-        "text": "#111111",
+        "bg": "linear-gradient(135deg, #ffffff, #f0f7ff)",
+        "card_bg": "rgba(0,0,0,0.05)",
+        "text": "#101624",
         "muted": "#444444",
-        "a1": "#0b78d1",
-        "a2": "#16a34a",
-        "a3": "#d63384"
+        "accent1": "#0b78d1",
+        "accent2": "#16a34a",
+        "accent3": "#d63384"
     }
 }
 
-chosen_theme = st.sidebar.selectbox("💡 AI Theme Mode", ["Dark", "Light"])
-T = THEMES[chosen_theme]
+theme = st.sidebar.selectbox("Choose Theme", ["Dark", "Light"])
+C = THEMES[theme]
 
-# ---------------------------
-# Inject Theme CSS
-# ---------------------------
+# --------------------------------------------------------------
+# CSS STYLING
+# --------------------------------------------------------------
 st.markdown(f"""
 <style>
-
 body {{
-    background: {T['bg']};
-    color: {T['text']};
+    background: {C['bg']};
+    color: {C['text']};
 }}
 
-.kpi {{
-    background: {T['card']};
-    padding: 22px;
-    border-radius: 18px;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.08);
-    box-shadow: 0 5px 25px rgba(0,0,0,0.25);
+.kpi-glass {{
+  background: {C['card_bg']};
+  backdrop-filter: blur(10px);
+  padding: 25px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.15);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+  transition: transform 0.3s;
+}}
+.kpi-glass:hover {{
+  transform: translateY(-5px);
 }}
 
-.small {{
-    color: {T['muted']};
-    font-size: 13px;
-}}
-
-.metric-circle {{
-    width: 150px;
-    height: 150px;
-    border-radius: 50%;
+.kpi-circle {{
+    width: 150px; height: 150px;
+    border-radius:50%;
     background: conic-gradient(var(--color) calc(var(--value) * 1%), #333 0%);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: auto;
-    box-shadow: 0 0 20px var(--color);
+    display:flex; align-items:center; justify-content:center;
+    margin:auto; box-shadow:0 0 20px var(--color-glow);
 }}
-
-.circle-inner {{
-    width: 110px;
-    height: 110px;
-    background: #0d0d0d;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 24px;
+.kpi-circle-inner {{
+    width:110px; height:110px;
+    background:#0d0d0d;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:26px; font-weight:700; color:white;
 }}
-
+.metric-bar {{
+    height: 18px; border-radius: 10px; background: #333;
+    overflow:hidden; position:relative;
+}}
+.metric-bar-fill {{
+    height:100%; border-radius:10px;
+    animation:fillBar 1.8s ease forwards;
+}}
+@keyframes fillBar {{
+    from {{ width:0%; }}
+    to {{ width:var(--width); }}
+}}
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------------------
-# Header Section
-# ---------------------------
+# --------------------------------------------------------------
+# HEADER WITH LOTTIE
+# --------------------------------------------------------------
+lottie = load_lottieurl("https://assets7.lottiefiles.com/packages/lf20_jcikwtux.json")
 colA, colB = st.columns([1,4])
+
 with colA:
-    anim = load_lottieurl("https://assets7.lottiefiles.com/packages/lf20_jcikwtux.json")
-    if anim:
-        st_lottie(anim, height=120)
+    if lottie:
+        st_lottie(lottie, height=130)
 
 with colB:
-    st.markdown(f"""
-        <h1 style='margin:0; color:{T['text']}'>
-            🚀 Next-Level Animated MT Evaluation Dashboard
-        </h1>
-        <div class='small'>AI Theme · 3D Charts · Radar · Lottie Animations</div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"<h1 style='color:{C['text']}'>🚀 Next-Level Animated MT Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:{C['muted']}'>Premium UI • Animated KPIs • 3D Charts • Radar • Tabs</p>", unsafe_allow_html=True)
 
 st.write("---")
 
-# ---------------------------
-# User Input
-# ---------------------------
-text = st.text_area("Enter text to evaluate:", height=140)
+# --------------------------------------------------------------
+# INPUT
+# --------------------------------------------------------------
+text = st.text_area("Enter text to evaluate:", height=120)
 
-# ===========================
-# SINGLE BUTTON (Run Evaluation)
-# ===========================
+# --------------------------------------------------------------
+# METRIC FUNCTION
+# --------------------------------------------------------------
+def get_metrics(out, src):
+    bleu = compute_bleu(src, out)
+    efc = compute_efc(src, out)
+    halluc = round(1 - efc, 3)
+    semantic = round((bleu + efc) / 2, 3)
+    return {
+        "BLEU": bleu,
+        "EFC": efc,
+        "Hallucination": halluc,
+        "Semantic": semantic
+    }
+
+# --------------------------------------------------------------
+# EVALUATE BUTTON
+# --------------------------------------------------------------
 if st.button("Run Evaluation"):
     if not text.strip():
-        st.error("Please enter some text.")
+        st.error("Please enter text.")
     else:
-        # ---------------------------
-        # MODEL RUNS
-        # ---------------------------
-        b_out = baseline_translate(text)
-        e_out = eact_translate(text)
-        r_out = rgcld_translate(text)
+        # RUN MODELS (HIDDEN)
+        out_b = baseline_translate(text)
+        out_e = eact_translate(text)
+        out_r = rgcld_translate(text)
 
-        # ---------------------------
-        # FIND METRICS
-        # ---------------------------
-        def metrics(output):
-            bleu = compute_bleu(text, output)
-            efc = compute_efc(text, output)
-            hall = round(1 - efc, 3)
-            sim = round((bleu + efc) / 2, 3)
-            return bleu, efc, hall, sim
+        mB = get_metrics(out_b, text)
+        mE = get_metrics(out_e, text)
+        mR = get_metrics(out_r, text)
 
-        b_bleu, b_efc, b_hall, b_sim = metrics(b_out)
-        e_bleu, e_efc, e_hall, e_sim = metrics(e_out)
-        r_bleu, r_efc, r_hall, r_sim = metrics(r_out)
+        # --------------------------------------------------------------
+        # TABS FOR METRICS
+        # --------------------------------------------------------------
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+            "💎 KPI Rings",
+            "📈 3D Metrics",
+            "🧭 Radar Comparison",
+            "📉 Advanced Metrics",
+            "📊 Comparison Table"
+        ])
 
-        # ---------------------------
-        # KPI CARDS (Animated Circles)
-        # ---------------------------
-        st.subheader("💎 Overview Metrics")
-
-        k1, k2, k3 = st.columns(3)
-
-        with k1:
-            st.markdown(f"""
-            <div class='kpi'>
-                <h3 style='color:{T['a1']}'>Baseline</h3>
-                <div class='metric-circle' style="--value:{b_bleu*100}; --color:{T['a1']}">
-                    <div class='circle-inner'>{b_bleu}</div>
-                </div>
-                <p class='small'>BLEU Score</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with k2:
-            st.markdown(f"""
-            <div class='kpi'>
-                <h3 style='color:{T['a2']}'>EACT</h3>
-                <div class='metric-circle' style="--value:{e_bleu*100}; --color:{T['a2']}">
-                    <div class='circle-inner'>{e_bleu}</div>
-                </div>
-                <p class='small'>BLEU Score</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with k3:
-            st.markdown(f"""
-            <div class='kpi'>
-                <h3 style='color:{T['a3']}'>RG-CLD</h3>
-                <div class='metric-circle' style="--value:{r_bleu*100}; --color:{T['a3']}">
-                    <div class='circle-inner'>{r_bleu}</div>
-                </div>
-                <p class='small'>BLEU Score</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-        # ---------------------------
-        # TABS for Different Metric Sections
-        # ---------------------------
-        tab1, tab2, tab3 = st.tabs(["📈 Primary Metrics", "🧠 Advanced Metrics", "📊 Comparison Table"])
-
-        # ---------------------------
-        # TAB 1 — PRIMARY METRICS
-        # ---------------------------
+        # --------------------------------------------------------------
+        # TAB 1 — KPI RINGS (Animated)
+        # --------------------------------------------------------------
         with tab1:
-            st.write("### BLEU & EFC Comparison")
-
             c1, c2, c3 = st.columns(3)
+            for (name, model, accent), col in zip(
+                [("Baseline", mB, C['accent1']),
+                 ("EACT", mE, C['accent2']),
+                 ("RG-CLD", mR, C['accent3'])],
+                [c1, c2, c3]
+            ):
+                bleu_val = model["BLEU"]
+                col.markdown(f"""
+                <div class="kpi-glass">
+                    <h3 style='text-align:center;color:{accent}'>{name}</h3>
+                    <div class="kpi-circle" style="--value:{bleu_val*100}; --color:{accent}; --color-glow:{accent}55;">
+                        <div class="kpi-circle-inner">{bleu_val}</div>
+                    </div>
+                    <p style='text-align:center;margin-top:10px;color:{C['muted']}'>BLEU Score</p>
+                </div>
+                """, unsafe_allow_html=True)
 
-            # Base
-            with c1:
-                fig, ax = plt.subplots(figsize=(3,3))
-                ax.bar(["BLEU", "EFC"], [b_bleu, b_efc], color=[T['a1'], T['a1']])
-                ax.set_ylim(0,1)
-                ax.set_title("Baseline")
-                st.pyplot(fig)
-
-            # EACT
-            with c2:
-                fig, ax = plt.subplots(figsize=(3,3))
-                ax.bar(["BLEU", "EFC"], [e_bleu, e_efc], color=[T['a2'], T['a2']])
-                ax.set_ylim(0,1)
-                ax.set_title("EACT")
-                st.pyplot(fig)
-
-            # RG-CLD
-            with c3:
-                fig, ax = plt.subplots(figsize=(3,3))
-                ax.bar(["BLEU", "EFC"], [r_bleu, r_efc], color=[T['a3'], T['a3']])
-                ax.set_ylim(0,1)
-                ax.set_title("RG-CLD")
-                st.pyplot(fig)
-
-        # ---------------------------
-        # TAB 2 — ADVANCED METRICS
-        # ---------------------------
+        # --------------------------------------------------------------
+        # TAB 2 — 3D Plotly Chart
+        # --------------------------------------------------------------
         with tab2:
-            st.write("### Hallucination & Semantic Similarity")
+            fig3d = go.Figure(data=[go.Scatter3d(
+                x=[mB["BLEU"], mE["BLEU"], mR["BLEU"]],
+                y=[mB["EFC"], mE["EFC"], mR["EFC"]],
+                z=[mB["Semantic"], mE["Semantic"], mR["Semantic"]],
+                mode='markers+text',
+                text=["Baseline", "EACT", "RG-CLD"],
+                marker=dict(size=8, color=[0,1,2], colorscale='Plotly3')
+            )])
+            fig3d.update_layout(
+                scene=dict(
+                    xaxis_title='BLEU',
+                    yaxis_title='EFC',
+                    zaxis_title='Semantic'
+                ),
+                height=600,
+            )
+            st.plotly_chart(fig3d, use_container_width=True)
 
-            a1, a2 = st.columns(2)
-
-            with a1:
-                fig, ax = plt.subplots(figsize=(3,3))
-                ax.bar(["Baseline","EACT","RG-CLD"], [b_hall,e_hall,r_hall], color=T['a3'])
-                ax.set_ylim(0,1)
-                ax.set_title("Hallucination Rate")
-                st.pyplot(fig)
-
-            with a2:
-                fig, ax = plt.subplots(figsize=(3,3))
-                ax.bar(["Baseline","EACT","RG-CLD"], [b_sim,e_sim,r_sim], color=T['a1'])
-                ax.set_ylim(0,1)
-                ax.set_title("Semantic Similarity")
-                st.pyplot(fig)
-
-            # Radar Chart
-            st.write("### Radar Comparison Chart")
-            categories = ["BLEU","EFC","Hallucination","Semantic"]
-            fig_radar = go.Figure()
-            fig_radar.add_trace(go.Scatterpolar(r=[b_bleu,b_efc,b_hall,b_sim], theta=categories, fill='toself', name="Baseline"))
-            fig_radar.add_trace(go.Scatterpolar(r=[e_bleu,e_efc,e_hall,e_sim], theta=categories, fill='toself', name="EACT"))
-            fig_radar.add_trace(go.Scatterpolar(r=[r_bleu,r_efc,r_hall,r_sim], theta=categories, fill='toself', name="RG-CLD"))
-            fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0,1])))
-            st.plotly_chart(fig_radar, use_container_width=True)
-
-        # ---------------------------
-        # TAB 3 — COMPARISON TABLE
-        # ---------------------------
+        # --------------------------------------------------------------
+        # TAB 3 — Animated Radar (Plotly)
+        # --------------------------------------------------------------
         with tab3:
+            categories = ["BLEU", "EFC", "Hallucination", "Semantic"]
+
+            figRadar = go.Figure()
+
+            figRadar.add_trace(go.Scatterpolar(
+                r=[mB[c] for c in categories],
+                theta=categories,
+                fill='toself',
+                name="Baseline"
+            ))
+            figRadar.add_trace(go.Scatterpolar(
+                r=[mE[c] for c in categories],
+                theta=categories,
+                fill='toself',
+                name="EACT"
+            ))
+            figRadar.add_trace(go.Scatterpolar(
+                r=[mR[c] for c in categories],
+                theta=categories,
+                fill='toself',
+                name="RG-CLD"
+            ))
+
+            figRadar.update_layout(
+                polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+                showlegend=True,
+                height=600
+            )
+
+            st.plotly_chart(figRadar, use_container_width=True)
+
+        # --------------------------------------------------------------
+        # TAB 4 — Advanced Metrics (Animated Bars)
+        # --------------------------------------------------------------
+        with tab4:
+            colA, colB = st.columns(2)
+
+            # Left side — Hallucination
+            with colA:
+                st.markdown("### Hallucination Rate (Lower = Better)")
+                for name, m, color in [
+                    ("Baseline", mB, "#ff4e50"),
+                    ("EACT", mE, "#ffa500"),
+                    ("RG-CLD", mR, "#ff2a68")
+                ]:
+                    st.markdown(f"""
+                    <p><b>{name}</b>: {m['Hallucination']}</p>
+                    <div class="metric-bar">
+                        <div class="metric-bar-fill" style="--width:{m['Hallucination']*100}%; background:{color};"></div>
+                    </div><br>
+                    """, unsafe_allow_html=True)
+
+            # Right side — Semantic Similarity
+            with colB:
+                st.markdown("### Semantic Similarity (Higher = Better)")
+                for name, m, color in [
+                    ("Baseline", mB, "#30cfd0"),
+                    ("EACT", mE, "#6a5acd"),
+                    ("RG-CLD", mR, "#4facfe")
+                ]:
+                    st.markdown(f"""
+                    <p><b>{name}</b>: {m['Semantic']}</p>
+                    <div class="metric-bar">
+                        <div class="metric-bar-fill" style="--width:{m['Semantic']*100}%; background:{color};"></div>
+                    </div><br>
+                    """, unsafe_allow_html=True)
+
+        # --------------------------------------------------------------
+        # TAB 5 — Comparison Table
+        # --------------------------------------------------------------
+        with tab5:
+            st.write("### Model Comparison Matrix")
             st.table({
-                "Model":["Baseline","EACT","RG-CLD"],
-                "BLEU":[b_bleu,e_bleu,r_bleu],
-                "EFC":[b_efc,e_efc,r_efc],
-                "Hallucination":[b_hall,e_hall,r_hall],
-                "Semantic":[b_sim,e_sim,r_sim]
+                "Model": ["Baseline", "EACT", "RG-CLD"],
+                "BLEU": [mB["BLEU"], mE["BLEU"], mR["BLEU"]],
+                "EFC": [mB["EFC"], mE["EFC"], mR["EFC"]],
+                "Hallucination": [mB["Hallucination"], mE["Hallucination"], mR["Hallucination"]],
+                "Semantic": [mB["Semantic"], mE["Semantic"], mR["Semantic"]],
             })
