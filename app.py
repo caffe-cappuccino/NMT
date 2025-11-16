@@ -14,7 +14,7 @@ from utils.scoring import compute_bleu, compute_efc
 # --------------------------------------------------------------
 # Page config
 # --------------------------------------------------------------
-st.set_page_config(page_title="Ultra-Premium MT Dashboard", layout="wide")
+st.set_page_config(page_title="Neural Translation Evaluation & Insights Platform", layout="wide")
 
 # --------------------------------------------------------------
 # Lottie loader
