@@ -1,321 +1,320 @@
+# ===============================================================
+#  PREMIUM NEXT-LEVEL MT DASHBOARD — FULL APP.PY
+# ===============================================================
+
 import streamlit as st
+import time
+import random
 import plotly.graph_objects as go
+import numpy as np
 import requests
 from streamlit_lottie import st_lottie
 
+# Your model files
 from models.baseline_model import baseline_translate
 from models.eact_model import eact_translate
 from models.rgcld_model import rgcld_translate
+
+# Your metric utils
 from utils.scoring import compute_bleu, compute_efc
 
 # --------------------------------------------------------------
 # PAGE CONFIG
 # --------------------------------------------------------------
-st.set_page_config(page_title="Premium MT Evaluation Dashboard", layout="wide")
+st.set_page_config(page_title="Ultra-Premium MT Dashboard", layout="wide")
 
 # --------------------------------------------------------------
-# LOTTIE LOADER
+# LOAD LOTTIE
 # --------------------------------------------------------------
-def load_lottieurl(url):
+def load_lottie(url):
     try:
         r = requests.get(url)
-        if r.status_code == 200:
-            return r.json()
+        return r.json() if r.status_code == 200 else None
     except:
         return None
-    return None
 
 # --------------------------------------------------------------
-# THEMING
+# THEMES
 # --------------------------------------------------------------
 THEMES = {
     "Dark": {
         "bg": "linear-gradient(135deg, #0b1020, #131b2f)",
-        "card_bg": "rgba(255,255,255,0.06)",
+        "card_bg": "rgba(255,255,255,0.07)",
         "text": "#FFFFFF",
         "muted": "#BFC8D6",
-        "accent1": "#4facfe",
-        "accent2": "#43e97b",
-        "accent3": "#fa709a",
+        "acc1": "#4facfe",
+        "acc2": "#43e97b",
+        "acc3": "#fa709a"
     },
     "Light": {
-        "bg": "linear-gradient(135deg, #ffffff, #f4f7ff)",
+        "bg": "linear-gradient(135deg, #ffffff, #f0f7ff)",
         "card_bg": "rgba(0,0,0,0.05)",
         "text": "#101624",
-        "muted": "#4a4a4a",
-        "accent1": "#0078ff",
-        "accent2": "#1bbf72",
-        "accent3": "#e84393",
+        "muted": "#444444",
+        "acc1": "#0b78d1",
+        "acc2": "#16a34a",
+        "acc3": "#d63384"
     }
 }
 
-theme = st.sidebar.selectbox("Theme", ["Dark", "Light"], index=0)
+theme = st.sidebar.selectbox("Theme", ["Dark", "Light"])
 C = THEMES[theme]
 
 # --------------------------------------------------------------
-# GLOBAL CSS
+# CSS
 # --------------------------------------------------------------
 st.markdown(f"""
 <style>
 body {{
-    background: {C['bg']};
-    color: {C['text']};
+    background:{C['bg']};
+    color:{C['text']};
 }}
 .kpi-glass {{
-    background: {C['card_bg']};
-    backdrop-filter: blur(10px);
-    padding: 22px;
-    border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.15);
-    box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+  background:{C['card_bg']};
+  backdrop-filter:blur(10px);
+  padding:25px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,0.15);
+  box-shadow:0 8px 28px rgba(0,0,0,0.35);
 }}
 .kpi-circle {{
-    width:160px; height:160px; border-radius:50%;
-    background:conic-gradient(var(--color) calc(var(--value)*1%), #333 0%);
-    margin:auto; display:flex; justify-content:center; align-items:center;
-    box-shadow:0 0 20px var(--color-glow);
+    width:150px;height:150px;border-radius:50%;
+    background: conic-gradient(var(--color) calc(var(--value) * 1%), #333 0%);
+    display:flex;align-items:center;justify-content:center;
+    margin:auto;box-shadow:0 0 20px var(--color-glow);
 }}
 .kpi-circle-inner {{
-    width:125px; height:125px; background:#0d0d0d;
-    color:white; border-radius:50%; font-size:30px;
-    display:flex; justify-content:center; align-items:center;
-    font-weight:700;
+    width:110px;height:110px;
+    background:#0d0d0d;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:26px;font-weight:700;color:white;
 }}
 .metric-bar {{
-    background:#2b2b2b; border-radius:12px; height:20px;
+    height:18px;border-radius:10px;background:#333;
+    overflow:hidden;
 }}
 .metric-bar-fill {{
-    height:100%; border-radius:12px;
-    animation:fillBar 1.8s ease forwards;
+    height:100%;border-radius:10px;
+    animation:fillBar 1.7s ease forwards;
+}}
+@keyframes fillBar {{
+    from {{width:0%;}}
+    to {{width:var(--width);}}
 }}
 </style>
 """, unsafe_allow_html=True)
 
 # --------------------------------------------------------------
-# HEADER + LOTTIE
+# HEADER
 # --------------------------------------------------------------
-lo = load_lottieurl("https://assets7.lottiefiles.com/packages/lf20_jcikwtux.json")
-colA, colB = st.columns([1,4])
-
-with colA:
-    if lo:
-        st_lottie(lo, height=140)
-
-with colB:
-    st.markdown(f"<h1 style='margin:0;color:{C['text']}'>🚀 Ultra-Premium Animated MT Dashboard</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color:{C['muted']}'>3D Animated Metrics • Gradient Lines • Transparent Planes • Mesh Boundaries</p>", unsafe_allow_html=True)
-
+lottie = load_lottie("https://assets7.lottiefiles.com/packages/lf20_jcikwtux.json")
+c1, c2 = st.columns([1,4])
+with c1:
+    if lottie:
+        st_lottie(lottie, height=140)
+with c2:
+    st.markdown(f"<h1 style='color:{C['text']}'>🚀 Ultra-Premium Animated MT Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:{C['muted']}'>Now with gradient 3D line, mesh planes, transparent axes & dotted curves</p>", unsafe_allow_html=True)
 st.write("---")
 
 # --------------------------------------------------------------
 # INPUT
 # --------------------------------------------------------------
-text = st.text_area("Enter text:", height=120)
-
+text = st.text_area("Enter text to evaluate:", height=120)
 
 # --------------------------------------------------------------
 # METRIC FUNCTION
 # --------------------------------------------------------------
-def get_metrics(out, src):
+def metrics(src, out):
     bleu = compute_bleu(src, out)
     efc = compute_efc(src, out)
     halluc = round(1 - efc, 3)
     semantic = round((bleu + efc) / 2, 3)
     return {"BLEU": bleu, "EFC": efc, "Hallucination": halluc, "Semantic": semantic}
 
-
 # --------------------------------------------------------------
-# RUN BUTTON
+# RUN EVALUATION
 # --------------------------------------------------------------
 if st.button("Run Evaluation"):
     if not text.strip():
-        st.error("Please enter text.")
+        st.error("Please enter text first.")
     else:
+        # Run models (hidden)
+        out_b = baseline_translate(text)
+        out_e = eact_translate(text)
+        out_r = rgcld_translate(text)
 
-        # --------------------------------------------------------------
-        # HIDDEN MODEL EXECUTION
-        # --------------------------------------------------------------
-        outB = baseline_translate(text)
-        outE = eact_translate(text)
-        outR = rgcld_translate(text)
+        mB = metrics(text, out_b)
+        mE = metrics(text, out_e)
+        mR = metrics(text, out_r)
 
-        mB = get_metrics(outB, text)
-        mE = get_metrics(outE, text)
-        mR = get_metrics(outR, text)
-
-        # --------------------------------------------------------------
-        # TABS LAYOUT
-        # --------------------------------------------------------------
+        # ----------------------------------------------------------
+        # TABS
+        # ----------------------------------------------------------
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "💎 KPI Rings",
-            "📈 3D Animated Metrics",
+            "📈 3D Gradient Line",
             "🧭 Radar Chart",
-            "🧬 Hallucination Metrics",
-            "📊 Comparison Table"
+            "📉 Advanced Metrics",
+            "📊 Table"
         ])
 
-        # **************************************************************
-        # TAB 1 — ANIMATED KPI CIRCLES
-        # **************************************************************
+        # ----------------------------------------------------------
+        # TAB 1 — KPI RINGS
+        # ----------------------------------------------------------
         with tab1:
-            c1, c2, c3 = st.columns(3)
-            for col, (name, model, accent) in zip(
-                [c1, c2, c3],
-                [
-                    ("Baseline", mB, C['accent1']),
-                    ("EACT", mE, C['accent2']),
-                    ("RG-CLD", mR, C['accent3'])
-                ],
+            cA, cB, cC = st.columns(3)
+            for (title, data, acc), col in zip(
+                [("Baseline", mB, C['acc1']),
+                 ("EACT", mE, C['acc2']),
+                 ("RG-CLD", mR, C['acc3'])],
+                [cA, cB, cC]
             ):
-                val = model["BLEU"]
+                b = data["BLEU"]
                 col.markdown(f"""
                 <div class="kpi-glass">
-                    <h3 style='text-align:center;color:{accent}'>{name}</h3>
-                    <div class="kpi-circle" style="--value:{val*100}; --color:{accent}; --color-glow:{accent}55;">
-                        <div class="kpi-circle-inner">{val}</div>
+                    <h3 style="text-align:center;color:{acc}">{title}</h3>
+                    <div class="kpi-circle" style="--value:{b*100}; --color:{acc}; --color-glow:{acc}66;">
+                        <div class="kpi-circle-inner">{b}</div>
                     </div>
-                    <p style='text-align:center;color:{C['muted']}'>BLEU Score</p>
+                    <p style='text-align:center;color:{C["muted"]}'>BLEU Score</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-        # **************************************************************
-        # TAB 2 — 3D ANIMATED METRICS
-        # **************************************************************
+        # ----------------------------------------------------------
+        # TAB 2 — 3D GRADIENT LINE + DOTTED + TRANSPARENT PLANES + MESH
+        # ----------------------------------------------------------
         with tab2:
-            st.markdown("### ✨ 3D Animated Metric Trajectory")
-            BLEU = [mB["BLEU"], mE["BLEU"], mR["BLEU"]]
-            EFC = [mB["EFC"], mE["EFC"], mR["EFC"]]
-            SEM = [mB["Semantic"], mE["Semantic"], mR["Semantic"]]
+            st.markdown("### 📈 Premium 3D Metric Space with Gradient + Mesh + Dotted Line")
+
+            x = [mB["BLEU"], mE["BLEU"], mR["BLEU"]]
+            y = [mB["EFC"], mE["EFC"], mR["EFC"]]
+            z = [mB["Semantic"], mE["Semantic"], mR["Semantic"]]
+
             labels = ["Baseline", "EACT", "RG-CLD"]
 
-            frames = []
-            for i in range(1, 4):
-                frames.append(go.Frame(
-                    data=[go.Scatter3d(
-                        x=BLEU[:i],
-                        y=EFC[:i],
-                        z=SEM[:i],
-                        mode="lines+markers",
-                        line=dict(width=6, dash="dash", color=[0, 0.5, 1]),
-                        marker=dict(size=8, color=BLEU[:i], colorscale="Electric"),
-                        text=labels[:i]
-                    )]
-                ))
+            # Create smooth curve segments for gradient
+            xs = np.linspace(x[0], x[-1], 50)
+            ys = np.linspace(y[0], y[-1], 50)
+            zs = np.linspace(z[0], z[-1], 50)
 
-            fig3d = go.Figure(
-                data=[go.Scatter3d(
-                    x=[BLEU[0]], y=[EFC[0]], z=[SEM[0]],
-                    mode="lines+markers",
-                    line=dict(width=6, dash="dash"),
-                    marker=dict(size=8)
-                )],
-                frames=frames
+            fig3d = go.Figure()
+
+            # Gradient dotted line
+            fig3d.add_trace(go.Scatter3d(
+                x=xs,
+                y=ys,
+                z=zs,
+                mode='lines',
+                line=dict(
+                    width=6,
+                    color=np.linspace(0,1,50),
+                    colorscale='Rainbow',
+                    dash='dot'  # dotted pattern
+                ),
+                name="Trajectory"
+            ))
+
+            # Add markers
+            fig3d.add_trace(go.Scatter3d(
+                x=x,
+                y=y,
+                z=z,
+                mode='markers+text',
+                marker=dict(size=8, color=[0,1,2], colorscale="Rainbow"),
+                text=labels,
+                textposition="top center",
+                name="Models"
+            ))
+
+            # Transparent axis planes
+            fig3d.update_scenes(
+                xaxis=dict(backgroundcolor="rgba(0,0,0,0.1)"),
+                yaxis=dict(backgroundcolor="rgba(0,0,0,0.05)"),
+                zaxis=dict(backgroundcolor="rgba(0,0,0,0.05)")
             )
+
+            # Mesh surfaces — bounding cube-like guidance planes
+            xx, yy = np.meshgrid(np.linspace(0,1,5), np.linspace(0,1,5))
+            zz = np.zeros_like(xx)
+            fig3d.add_trace(go.Surface(
+                x=xx, y=yy, z=zz,
+                opacity=0.15,
+                showscale=False,
+                colorscale="Blues",
+                name="Boundary Surface"
+            ))
 
             fig3d.update_layout(
+                height=600,
                 scene=dict(
-                    xaxis_title="BLEU",
-                    yaxis_title="EFC",
-                    zaxis_title="Semantic",
-                    xaxis=dict(showbackground=True, backgroundcolor="rgba(255,255,255,0.05)"),
-                    yaxis=dict(showbackground=True, backgroundcolor="rgba(255,255,255,0.05)"),
-                    zaxis=dict(showbackground=True, backgroundcolor="rgba(255,255,255,0.05)"),
-                ),
-                updatemenus=[{
-                    "type": "buttons",
-                    "buttons": [{
-                        "label": "▶ Play Animation",
-                        "method": "animate",
-                        "args": [None, {"frame": {"duration": 900, "redraw": True}}]
-                    }]
-                }],
-                margin=dict(l=0, r=0, t=0, b=0),
-                height=650
+                    xaxis_title='BLEU',
+                    yaxis_title='EFC',
+                    zaxis_title='Semantic',
+                )
             )
-
-            # Mesh surfaces for metric boundaries
-            fig3d.add_trace(go.Mesh3d(
-                x=[0, 1, 1], y=[0, 0, 1], z=[0, 1, 0],
-                opacity=0.1, color=C['accent1']
-            ))
-
-            fig3d.add_trace(go.Mesh3d(
-                x=[1, 0, 1], y=[1, 1, 0], z=[0, 1, 1],
-                opacity=0.1, color=C['accent3']
-            ))
 
             st.plotly_chart(fig3d, use_container_width=True)
 
-        # **************************************************************
+        # ----------------------------------------------------------
         # TAB 3 — RADAR CHART
-        # **************************************************************
+        # ----------------------------------------------------------
         with tab3:
-            categories = ["BLEU", "EFC", "Hallucination", "Semantic"]
+            cats = ["BLEU", "EFC", "Hallucination", "Semantic"]
 
-            figRadar = go.Figure()
-            figRadar.add_trace(go.Scatterpolar(
-                r=[mB[c] for c in categories],
-                theta=categories, fill="toself", name="Baseline"
-            ))
-            figRadar.add_trace(go.Scatterpolar(
-                r=[mE[c] for c in categories],
-                theta=categories, fill="toself", name="EACT"
-            ))
-            figRadar.add_trace(go.Scatterpolar(
-                r=[mR[c] for c in categories],
-                theta=categories, fill="toself", name="RG-CLD"
-            ))
+            figR = go.Figure()
+            figR.add_trace(go.Scatterpolar(
+                r=[mB[c] for c in cats], theta=cats, fill='toself', name="Baseline"))
+            figR.add_trace(go.Scatterpolar(
+                r=[mE[c] for c in cats], theta=cats, fill='toself', name="EACT"))
+            figR.add_trace(go.Scatterpolar(
+                r=[mR[c] for c in cats], theta=cats, fill='toself', name="RG-CLD"))
 
-            figRadar.update_layout(
-                polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
-                height=650,
+            figR.update_layout(
+                polar=dict(radialaxis=dict(visible=True, range=[0,1])),
+                height=600
             )
+            st.plotly_chart(figR, use_container_width=True)
 
-            st.plotly_chart(figRadar, use_container_width=True)
-
-        # **************************************************************
-        # TAB 4 — HALLUCINATION TAB (BACK)
-        # **************************************************************
+        # ----------------------------------------------------------
+        # TAB 4 — ADVANCED METRICS (Animated Bars)
+        # ----------------------------------------------------------
         with tab4:
-            st.markdown("### 🧬 Hallucination & Semantic Similarity")
+            colX, colY = st.columns(2)
 
-            colA, colB = st.columns(2)
-
-            # Hallucination Rate Bars
-            with colA:
-                st.write("#### Hallucination Rate")
-                for name, m, color in [
+            with colX:
+                st.markdown("### Hallucination Rate")
+                for name, m, clr in [
                     ("Baseline", mB, "#ff4e50"),
-                    ("EACT", mE, "#ff9500"),
+                    ("EACT", mE, "#ffa600"),
                     ("RG-CLD", mR, "#ff2a68")
                 ]:
                     st.markdown(f"""
                     <p><b>{name}</b>: {m['Hallucination']}</p>
                     <div class="metric-bar">
-                        <div class="metric-bar-fill" style="--width:{m['Hallucination']*100}%; background:{color};"></div>
+                        <div class="metric-bar-fill" style="--width:{m['Hallucination']*100}%; background:{clr};"></div>
                     </div><br>
                     """, unsafe_allow_html=True)
 
-            # Semantic Similarity Bars
-            with colB:
-                st.write("#### Semantic Similarity")
-                for name, m, color in [
-                    ("Baseline", mB, "#4facfe"),
-                    ("EACT", mE, "#43e97b"),
-                    ("RG-CLD", mR, "#fa709a")
+            with colY:
+                st.markdown("### Semantic Similarity")
+                for name, m, clr in [
+                    ("Baseline", mB, "#30cfd0"),
+                    ("EACT", mE, "#6a5acd"),
+                    ("RG-CLD", mR, "#4facfe")
                 ]:
                     st.markdown(f"""
                     <p><b>{name}</b>: {m['Semantic']}</p>
                     <div class="metric-bar">
-                        <div class="metric-bar-fill" style="--width:{m['Semantic']*100}%; background:{color};"></div>
+                        <div class="metric-bar-fill" style="--width:{m['Semantic']*100}%; background:{clr};"></div>
                     </div><br>
                     """, unsafe_allow_html=True)
 
-        # **************************************************************
-        # TAB 5 — COMPARISON TABLE
-        # **************************************************************
+        # ----------------------------------------------------------
+        # TAB 5 — TABLE
+        # ----------------------------------------------------------
         with tab5:
-            st.write("### 📊 Comparison Table")
+            st.write("### Comparison Table")
             st.table({
                 "Model": ["Baseline", "EACT", "RG-CLD"],
                 "BLEU": [mB["BLEU"], mE["BLEU"], mR["BLEU"]],
