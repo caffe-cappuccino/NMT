@@ -186,7 +186,7 @@ if run_clicked:
             if loading_animation:
                 st_lottie(loading_animation, height=200)
 
-        time.sleep(1)
+        time.sleep(3.2)
 
         # Get outputs
         out_b = baseline_translate(text)
