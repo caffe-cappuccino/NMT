@@ -1,10 +1,9 @@
 streamlit
 plotly
 numpy
-requests
-streamlit_lottie
-matplotlib
-bert-score
-sacrebleu
 torch
 transformers
+bert-score
+sentence-transformers
+requests
+streamlit_lottie
