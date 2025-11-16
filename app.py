@@ -99,7 +99,7 @@ with col1:
     if lottie:
         st_lottie(lottie, height=120)
 with col2:
-    st.markdown(f"<h1 style='color:{C['text']}; margin:0;'>🚀 Ultra-Premium MT Evaluation Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='color:{C['text']}; margin:0;'>🚀 Neural Translation Evaluation & Insights Platform</h1>", unsafe_allow_html=True)
     st.markdown(f"<div style='color:{C['muted']};'>Single click: run evaluation → all tabs update • BLEU & EFC focused 3D line</div>", unsafe_allow_html=True)
 
 st.write("---")
