@@ -7,7 +7,5 @@ bert-score
 sentence-transformers
 requests
 streamlit_lottie
-transformers==4.40.0
-torch
-sentencepiece
-protobuf==3.20.*
+sentencepiece>=0.1.99
+
