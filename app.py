@@ -7,10 +7,12 @@ from streamlit_lottie import st_lottie
 import time
 import streamlit.components.v1 as components
 
-# Import your model wrappers & scoring utils
+# Import your model wrappers
 from models.baseline_model import baseline_translate
 from models.eact_model import eact_translate
 from models.rgcld_model import rgcld_translate
+
+# Import your scoring functions
 from utils.scoring import compute_bleu, compute_efc
 
 
@@ -54,7 +56,7 @@ THEMES = {
         "accent3": "#fa709a",
     },
     "Light": {
-        "bg": "linear-gradient(135deg, #ffffff, #f0f7ff)",
+        "bg": "linear-gradient(135deg, #ffffff, #eef5ff)",
         "card_bg": "rgba(0,0,0,0.05)",
         "text": "#101624",
         "muted": "#444444",
@@ -69,7 +71,7 @@ C = THEMES[theme]
 
 
 # ---------------------------------------------------------------
-# CSS  (Typewriter + Layout + Base Styling)
+# CSS (Typewriter + Colors)
 # ---------------------------------------------------------------
 TYPEWRITER_CHARS = 96
 
@@ -77,21 +79,18 @@ st.markdown(f"""
 <style>
 
 body {{
-  background: {C['bg']};
-  color: {C['text']};
-  font-family: "Segoe UI", Roboto, sans-serif;
+    background: {C['bg']};
+    color: {C['text']};
+    font-family: "Segoe UI", Roboto, sans-serif;
 }}
 
-/* Typewriter */
 @keyframes typing {{
   from {{ width: 0; }}
   to {{ width: {TYPEWRITER_CHARS}ch; }}
 }}
-
 @keyframes blink {{
   50% {{ border-color: transparent; }}
 }}
-
 @keyframes hideCursor {{
   from {{ border-right-color:{C['text']}; }}
   to {{ border-right-color: transparent; }}
@@ -110,19 +109,17 @@ body {{
   color:{C['muted']};
 }}
 
-/* KPI RING CARDS */
 .kpi-card {{
-  background:{C['card_bg']};
-  padding:18px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,0.08);
-  box-shadow:0 6px 18px rgba(0,0,0,0.35);
-  text-align:center;
+    background:{C['card_bg']};
+    padding:18px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.08);
+    box-shadow:0 6px 18px rgba(0,0,0,0.35);
+    text-align:center;
 }}
 
-/* TABLE COLOR FIX */
 td, th, .stMarkdown p {{
-  color: {C['text']} !important;
+    color: {C['text']} !important;
 }}
 
 </style>
@@ -136,10 +133,13 @@ h1c1, h1c2 = st.columns([1, 4])
 
 with h1c1:
     if header_lottie:
-        st_lottie(header_lottie, height=120)
+        st_lottie(header_lottie, height=110)
 
 with h1c2:
-    st.markdown(f"<h1>Neural Translation Evaluation & Insights Platform</h1>", unsafe_allow_html=True)
+    st.markdown(
+        f"<h1 style='margin:0;'>Neural Translation Evaluation & Insights Platform</h1>",
+        unsafe_allow_html=True
+    )
     st.markdown(
         f"<div class='typewriter'>AI-driven analytics for benchmarking translation quality, coherence, and linguistic fidelity.</div>",
         unsafe_allow_html=True
@@ -149,43 +149,44 @@ st.write("---")
 
 
 # ---------------------------------------------------------------
-# INPUT
+# INPUT SECTION
 # ---------------------------------------------------------------
 text = st.text_area("Enter text to evaluate:", height=140)
 run_clicked = st.button("Run Evaluation")
 
 
 # ---------------------------------------------------------------
-# Compute metrics helper
+# Metric helper
 # ---------------------------------------------------------------
 def get_metrics(src, out):
     bleu = compute_bleu(src, out)
     efc = compute_efc(src, out)
-    halluc = round(1 - efc, 3)
-    semantic = round((bleu + efc) / 2, 3)
+    halluc = 1 - efc
+    semantic = (bleu + efc) / 2
     return {
-        "BLEU": float(np.clip(bleu, 0, 1)),
-        "EFC": float(np.clip(efc, 0, 1)),
-        "Hallucination": float(np.clip(halluc, 0, 1)),
-        "Semantic": float(np.clip(semantic, 0, 1))
+        "BLEU": float(bleu),
+        "EFC": float(efc),
+        "Hallucination": float(halluc),
+        "Semantic": float(semantic),
     }
 
 
 # ---------------------------------------------------------------
-# RUN
+# MAIN PIPELINE
 # ---------------------------------------------------------------
 if run_clicked:
 
     if not text.strip():
-        st.error("Please enter text!")
+        st.error("Please enter text.")
     else:
 
-        # Loading only animation, no text
+        # Loading animation only
         loader = st.empty()
         with loader:
             if loading_animation:
                 st_lottie(loading_animation, height=200)
 
+        # Wait longer so animations show fully
         time.sleep(3.2)
 
         # Get outputs
@@ -212,7 +213,7 @@ if run_clicked:
         ])
 
         # -------------------------------------------------------
-        # TAB 1 – KPI RINGS ★ Animated
+        # TAB 1 – KPI RINGS
         # -------------------------------------------------------
         with tab1:
 
@@ -228,8 +229,9 @@ if run_clicked:
                 html += f"""
                 <div class="kpi-card" style="flex:1;">
                     <div style='font-size:14px;color:{color};font-weight:700;'>{title}</div>
+
                     <div class="kpi-ring" data-target="{val}" data-color="{color}" 
-                        style="width:140px;height:140px;border-radius:50%; margin:10px auto; position:relative;">
+                         style="width:140px;height:140px;border-radius:50%; margin:10px auto; position:relative;">
                         
                         <div class="ring-bg" 
                              style="position:absolute; inset:0; border-radius:50%;
@@ -251,57 +253,52 @@ if run_clicked:
 
             html += "</div>"
 
-            # KPI JS — FIXED (no backticks)
+            # FIXED JS (NO backticks!)
             js = """
             <script>
             (function(){
                 const rings = document.querySelectorAll('.kpi-ring');
-
                 rings.forEach(function(r){
                     const target = parseFloat(r.getAttribute('data-target')) || 0;
-                    const color = r.getAttribute('data-color') || '#4facfe';
+                    const color = r.getAttribute('data-color');
                     const bg = r.querySelector('.ring-bg');
                     const num = r.querySelector('.kpi-number');
 
                     let start = null;
-                    const duration = 1000;
+                    const duration = 1200;
 
                     function step(ts){
                         if(!start) start = ts;
-                        const progress = Math.min((ts - start) / duration, 1);
-                        const current = progress * target;
+                        const progress = Math.min((ts - start)/duration, 1);
+                        const value = progress * target;
 
-                        bg.style.background =
-                            "conic-gradient(" + color + " " + current + "%, rgba(255,255,255,0.06) 0%)";
-
-                        num.innerText = current.toFixed(2);
+                        bg.style.background = 
+                          "conic-gradient(" + color + " " + value + "%, rgba(255,255,255,0.06) 0%)";
+                        num.innerText = value.toFixed(2);
 
                         if(progress < 1){
-                            window.requestAnimationFrame(step);
+                            requestAnimationFrame(step);
                         } else {
-                            bg.style.background =
-                                "conic-gradient(" + color + " " + target + "%, rgba(255,255,255,0.06) 0%)";
+                            bg.style.background = 
+                              "conic-gradient(" + color + " " + target + "%, rgba(255,255,255,0.06) 0%)";
                             num.innerText = target.toFixed(2);
                         }
                     }
-
-                    window.requestAnimationFrame(step);
+                    requestAnimationFrame(step);
                 });
             })();
             </script>
             """
 
-            components.html(html + js, height=300, scrolling=False)
+            components.html(html + js, height=310, scrolling=False)
 
         # -------------------------------------------------------
-        # TAB 2 – 3D Plot
+        # TAB 2 – 3D TRAJECTORY
         # -------------------------------------------------------
         with tab2:
 
-            st.markdown("### 3D BLEU–EFC Trajectory")
-
             X = [mB["BLEU"], mE["BLEU"], mR["BLEU"]]
-            Y = [mB["EFC"],  mE["EFC"],  mR["EFC"]]
+            Y = [mB["EFC"], mE["EFC"], mR["EFC"]]
             Z = [0.0, 0.5, 1.0]
 
             t = np.linspace(0, 1, 300)
@@ -311,24 +308,29 @@ if run_clicked:
 
             fig = go.Figure()
             fig.add_trace(go.Scatter3d(
-                x=xs, y=ys, z=zs, mode="lines",
+                x=xs, y=ys, z=zs,
+                mode="lines",
                 line=dict(width=8, color=xs, colorscale="Turbo", dash="dot")
             ))
             fig.add_trace(go.Scatter3d(
-                x=X, y=Y, z=Z, mode="markers+text",
+                x=X, y=Y, z=Z,
+                mode="markers+text",
+                text=["Baseline","EACT","RG-CLD"],
+                textposition="top center",
                 marker=dict(size=8, color=[C["accent1"],C["accent2"],C["accent3"]],
-                            line=dict(width=2,color="white")),
-                text=["Baseline","EACT","RG-CLD"], textposition="top center"
+                            line=dict(width=2,color="white"))
             ))
 
-            fig.update_layout(height=650, showlegend=False)
+            fig.update_layout(
+                height=650,
+                showlegend=False
+            )
             st.plotly_chart(fig, use_container_width=True)
 
         # -------------------------------------------------------
         # TAB 3 – RADAR
         # -------------------------------------------------------
         with tab3:
-
             cats = ["BLEU", "EFC", "Hallucination", "Semantic"]
 
             figR = go.Figure()
@@ -336,11 +338,14 @@ if run_clicked:
             figR.add_trace(go.Scatterpolar(r=[mE[c] for c in cats], theta=cats, fill="toself", name="EACT"))
             figR.add_trace(go.Scatterpolar(r=[mR[c] for c in cats], theta=cats, fill="toself", name="RG-CLD"))
 
-            figR.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0,1])), height=620)
+            figR.update_layout(
+                polar=dict(radialaxis=dict(visible=True, range=[0,1])),
+                height=630
+            )
             st.plotly_chart(figR, use_container_width=True)
 
         # -------------------------------------------------------
-        # TAB 4 – Animated Bars
+        # TAB 4 – HALLUCINATION & SEMANTIC BARS
         # -------------------------------------------------------
         with tab4:
 
@@ -358,9 +363,8 @@ if run_clicked:
             html = "<div style='display:flex; gap:25px;'>"
 
             # Hallucination
-            html += "<div style='flex:1;'><h4>Hallucination Rate</h4>"
+            html += f"<div style='flex:1;'><h4 style='color:{C['text']};font-weight:700;'>Hallucination Rate (Lower = Better)</h4>"
             for name, val, color in halluc:
-
                 html += f"""
                 <div style="background:{C['card_bg']}; padding:12px; border-radius:10px;
                             margin-bottom:10px; border:1px solid rgba(255,255,255,0.06);">
@@ -371,18 +375,15 @@ if run_clicked:
 
                     <div class="bar-wrap" data-target="{val}" data-color="{color}"
                          style="height:14px; background:rgba(0,0,0,0.15); border-radius:8px; margin-top:8px;">
-                        <div class="bar-fill" style="width:0%; height:100%; 
-                            background:{color}; border-radius:8px;">
-                        </div>
+                        <div class="bar-fill" style="width:0%; height:100%; border-radius:8px;"></div>
                     </div>
                 </div>
                 """
             html += "</div>"
 
             # Semantic
-            html += "<div style='flex:1;'><h4>Semantic Similarity</h4>"
+            html += f"<div style='flex:1;'><h4 style='color:{C['text']};font-weight:700;'>Semantic Similarity (Higher = Better)</h4>"
             for name, val, color in semantic:
-
                 html += f"""
                 <div style="background:{C['card_bg']}; padding:12px; border-radius:10px;
                             margin-bottom:10px; border:1px solid rgba(255,255,255,0.06);">
@@ -393,61 +394,58 @@ if run_clicked:
 
                     <div class="bar-wrap" data-target="{val}" data-color="{color}"
                          style="height:14px; background:rgba(0,0,0,0.15); border-radius:8px; margin-top:8px;">
-                        <div class="bar-fill" style="width:0%; height:100%; 
-                            background:{color}; border-radius:8px;">
-                        </div>
+                        <div class="bar-fill" style="width:0%; height:100%; border-radius:8px;"></div>
                     </div>
                 </div>
                 """
             html += "</div></div>"
 
-            # JS — FIXED VERSION
+            # FIXED JS
             js = """
             <script>
             (function(){
                 const bars = document.querySelectorAll('.bar-wrap');
-
                 bars.forEach(function(bar){
                     const target = parseFloat(bar.getAttribute('data-target')) || 0;
-                    const color = bar.getAttribute('data-color') || '#4facfe';
+                    const color = bar.getAttribute('data-color');
                     const fill = bar.querySelector('.bar-fill');
                     const num = bar.parentElement.querySelector('.bar-num');
 
                     setTimeout(function(){
-                        fill.style.transition = 'width 1.4s cubic-bezier(.2,.9,.2,1)';
-                        fill.style.width = target + '%';
+                        fill.style.transition = "width 1.4s cubic-bezier(.2,.9,.2,1)";
+                        fill.style.width = target + "%";
                         fill.style.background = color;
                         fill.style.boxShadow = "0 8px 30px " + color + "55";
-                    }, 80);
+                    }, 50);
 
                     let start = null;
-                    const duration = 1000;
-
-                    function countStep(ts){
+                    const duration = 1100;
+                    function step(ts){
                         if(!start) start = ts;
-                        const prog = Math.min((ts - start)/duration, 1);
+                        const prog = Math.min((ts-start)/duration, 1);
                         const cur = Math.round(prog * target);
                         num.innerText = cur;
                         if(prog < 1){
-                            window.requestAnimationFrame(countStep);
+                            requestAnimationFrame(step);
                         } else {
                             num.innerText = Math.round(target);
                         }
                     }
-                    window.requestAnimationFrame(countStep);
-
+                    requestAnimationFrame(step);
                 });
             })();
             </script>
             """
 
-            components.html(html + js, height=550, scrolling=False)
+            components.html(html + js, height=560, scrolling=False)
 
         # -------------------------------------------------------
-        # TAB 5 – TABLE
+        # TAB 5 – SCORECARD TABLE
         # -------------------------------------------------------
         with tab5:
+
             st.write("### Model Scorecard Matrix")
+
             st.table({
                 "Model": ["Baseline", "EACT", "RG-CLD"],
                 "BLEU": [mB["BLEU"], mE["BLEU"], mR["BLEU"]],
