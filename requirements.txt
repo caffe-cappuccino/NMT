@@ -1,15 +1,10 @@
 streamlit
 plotly
 numpy
-streamlit_lottie
 requests
+streamlit_lottie
 matplotlib
-
-# metrics & ML
 bert-score
 sacrebleu
 torch
 transformers
-# COMET: the package name may vary by environment; `comet` is used in some examples.
-# If the COMET import fails on your host, the dashboard will still run and show 'n/a' for COMET.
-comet
