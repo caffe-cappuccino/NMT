@@ -1,2 +1,2 @@
 def baseline_translate(text):
-    return "Baseline translation for: " + text
+    return text[::-1]  # reverse text to simulate translation
