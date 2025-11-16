@@ -5,23 +5,22 @@ import plotly.graph_objects as go
 import requests
 from streamlit_lottie import st_lottie
 import time
-import json
 import streamlit.components.v1 as components
 
-# Import your model wrappers and scoring utils
+# Import your model wrappers and scoring utils (must exist in your repo)
 from models.baseline_model import baseline_translate
 from models.eact_model import eact_translate
 from models.rgcld_model import rgcld_translate
 from utils.scoring import compute_bleu, compute_efc
 
-# ---------------------------------------------------------------------
+# -------------------------
 # Page config
-# ---------------------------------------------------------------------
+# -------------------------
 st.set_page_config(page_title="Neural Translation Evaluation & Insights Platform", layout="wide")
 
-# ---------------------------------------------------------------------
-# Helpers: load Lottie
-# ---------------------------------------------------------------------
+# -------------------------
+# Helpers
+# -------------------------
 def load_lottie(url, timeout=5):
     try:
         r = requests.get(url, timeout=timeout)
@@ -31,13 +30,12 @@ def load_lottie(url, timeout=5):
         return None
     return None
 
-# loading animation (used while processing)
 loading_animation = load_lottie("https://assets2.lottiefiles.com/packages/lf20_usmfx6bp.json")
 header_lottie = load_lottie("https://assets7.lottiefiles.com/packages/lf20_jcikwtux.json")
 
-# ---------------------------------------------------------------------
-# Themes (colors)
-# ---------------------------------------------------------------------
+# -------------------------
+# Theme / Colors
+# -------------------------
 THEMES = {
     "Dark": {
         "bg": "linear-gradient(135deg, #0b1020, #131b2f)",
@@ -62,12 +60,10 @@ THEMES = {
 theme = st.sidebar.selectbox("Theme", ["Dark", "Light"])
 C = THEMES[theme]
 
-# ---------------------------------------------------------------------
-# Core CSS (typewriter, KPI rings, bars, glow)
-# ---------------------------------------------------------------------
-# caption text length is 96 chars — typewriter width uses that; cursor hides after typing
+# -------------------------
+# Base CSS (keeps Streamlit layout consistent)
+# -------------------------
 TYPEWRITER_CHARS = 96
-
 st.markdown(f"""
 <style>
 /* Page base */
@@ -77,7 +73,7 @@ body {{
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }}
 
-/* Typewriter: types then cursor disappears */
+/* Typewriter animation (cursor disappears after typing) */
 @keyframes typing {{
   from {{ width: 0; }}
   to {{ width: {TYPEWRITER_CHARS}ch; }}
@@ -105,101 +101,35 @@ body {{
   color: {C['muted']};
 }}
 
-/* KPI glass card */
-.kpi-glass {{
-  background: {C['card_bg']};
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  padding: 18px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-  text-align: center;
+/* keep Streamlit table/text colors readable */
+.stMarkdown, .css-1d391kg p, .stText {{
+  color: {C['text']};
 }}
-
-/* KPI ring container */
-.kpi-ring {{
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  margin: 12px auto;
-  position: relative;
-  --value: 0;
-  transition: --value 1s ease;
-}}
-.kpi-ring .ring-bg {{
-  position: absolute; inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(var(--color) calc(var(--value) * 1%), rgba(255,255,255,0.06) 0%);
-  display:flex;align-items:center;justify-content:center;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.4);
-}}
-.kpi-ring .ring-inner {{
-  width: 96px; height:96px; border-radius:50%;
-  background: rgba(0,0,0,0.55);
-  display:flex;align-items:center;justify-content:center;
-  color: #fff; font-weight:700; font-size:20px;
-  border: 2px solid rgba(255,255,255,0.04);
-}}
-
-/* small label */
-.kpi-label {{ color: {C['muted']}; margin-top:8px; }}
-
-/* Animated metric bars */
-.metric-card {{
-  background: {C['card_bg']};
-  backdrop-filter: blur(8px);
-  padding:12px;
-  border-radius:10px;
-  border:1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
-}}
-.metric-name {{ font-weight:700; color:{C['text']}; margin-bottom:6px; }}
-.metric-value {{ font-weight:700; color:{C['muted']}; margin-left:8px; }}
-
-/* bar */
-.metric-bar {{
-  height: 14px; border-radius:8px; background: rgba(0,0,0,0.15); overflow:hidden;
-}}
-.metric-bar-fill {{
-  height:100%;
-  width: 0%;
-  border-radius:8px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.2) inset;
-  transition: width 1.4s cubic-bezier(.2,.9,.2,1), box-shadow 0.4s;
-}}
-.metric-bar-fill.end-glow {{
-  box-shadow: 0 8px 30px var(--glow-color);
-}}
-
-/* compact table styling override */
-.dataframe tbody tr td {{ color: {C['text']}; }}
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------
-# Header (Lottie + title + typewriter caption)
-# ---------------------------------------------------------------------
-col_h1, col_h2 = st.columns([1, 4])
-with col_h1:
+# -------------------------
+# Header (Lottie + Title + Caption)
+# -------------------------
+col1, col2 = st.columns([1, 4])
+with col1:
     if header_lottie:
         st_lottie(header_lottie, height=120)
-with col_h2:
+with col2:
     st.markdown(f"<h1 style='color:{C['text']}; margin:0;'>Neural Translation Evaluation & Insights Platform</h1>", unsafe_allow_html=True)
     st.markdown(f"<div class='typewriter'>AI-driven analytics for benchmarking translation quality, coherence, and linguistic fidelity.</div>", unsafe_allow_html=True)
 
 st.write("---")
 
-# ---------------------------------------------------------------------
-# Input area
-# ---------------------------------------------------------------------
-text = st.text_area("Enter text to evaluate:", height=140)
-# single Run button (per your request)
+# -------------------------
+# Input
+# -------------------------
+text = st.text_area("Enter source text to evaluate:", height=140)
 run_clicked = st.button("Run Evaluation")
 
-# ---------------------------------------------------------------------
-# Utility metrics function
-# ---------------------------------------------------------------------
+# -------------------------
+# Metric helper
+# -------------------------
 def get_metrics(src, out):
     bleu = compute_bleu(src, out)
     efc = compute_efc(src, out)
@@ -212,15 +142,14 @@ def get_metrics(src, out):
         "Semantic": float(np.clip(semantic, 0.0, 1.0))
     }
 
-# ---------------------------------------------------------------------
-# When Run is clicked: show only loading animation (no spinner text),
-# compute metrics, then render the animated dashboard and inject JS to animate
-# ---------------------------------------------------------------------
+# -------------------------
+# When run: compute & render
+# -------------------------
 if run_clicked:
     if not text.strip():
         st.error("Please enter text to evaluate.")
     else:
-        # show only loading lottie
+        # Show only the loading Lottie animation (no spinner text)
         loader = st.empty()
         with loader:
             if loading_animation:
@@ -228,23 +157,23 @@ if run_clicked:
             else:
                 st.markdown("<div style='padding:20px; text-align:center;'>Loading...</div>", unsafe_allow_html=True)
 
-        # simulate short delay for smoothness (if your models are quick you can reduce this)
-        time.sleep(1.2)
+        # small delay for smoothness (optional)
+        time.sleep(0.8)
 
-        # run models (hidden outputs)
+        # Run model translations (these should be implemented to return translated text)
         out_b = baseline_translate(text)
         out_e = eact_translate(text)
         out_r = rgcld_translate(text)
 
-        # compute metrics
+        # Compute metrics
         mB = get_metrics(text, out_b)
         mE = get_metrics(text, out_e)
         mR = get_metrics(text, out_r)
 
-        # remove loader
+        # Clear loader
         loader.empty()
 
-        # TAB NAMES (enterprise)
+        # Tab names (enterprise)
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "📊 Executive KPI Deck",
             "🧭 Model Trajectory Space (3D)",
@@ -254,37 +183,78 @@ if run_clicked:
         ])
 
         # -------------------------
-        # Tab 1: KPI Deck (animated rings)
+        # Tab 1: KPI Deck — rendered via components.html (self-contained)
+        # Animated rings + numeric counters live correctly on Streamlit Cloud
         # -------------------------
         with tab1:
-            cols = st.columns(3)
-            items = [
-                ("Baseline", mB["BLEU"], C["accent1"], "BLEU"),
-                ("EACT",     mE["BLEU"], C["accent2"], "BLEU"),
-                ("RG-CLD",   mR["BLEU"], C["accent3"], "BLEU"),
+            # Prepare metrics for embedding
+            kpi_items = [
+                {"title": "Baseline", "value": round(mB["BLEU"] * 100, 2), "color": C["accent1"], "label": "BLEU (%)"},
+                {"title": "EACT",     "value": round(mE["BLEU"] * 100, 2), "color": C["accent2"], "label": "BLEU (%)"},
+                {"title": "RG-CLD",   "value": round(mR["BLEU"] * 100, 2), "color": C["accent3"], "label": "BLEU (%)"},
             ]
-            # We'll render ring containers with data-target attributes and numeric spans
-            for (title, val, color, label), col in zip(items, cols):
-                pct = round(float(val) * 100, 2)
-                # render HTML card
-                col.markdown(f"""
-                <div class="kpi-glass">
-                  <div style="font-size:14px;color:{color};font-weight:700;margin-bottom:6px">{title}</div>
-                  <div class="kpi-ring" data-target="{pct}" data-color="{color}">
-                    <div class="ring-bg" style="--color:{color}; --value:0;"></div>
-                    <div class="ring-inner">
-                      <span class="kpi-number">0</span>
+
+            kpi_html = f"""
+            <div style="display:flex; gap:20px; justify-content:space-between; align-items:flex-start;">
+            """
+            for it in kpi_items:
+                kpi_html += f"""
+                <div style="flex:1; max-width:320px;">
+                  <div style="background:{C['card_bg']}; padding:18px; border-radius:14px; text-align:center; border:1px solid rgba(255,255,255,0.06);">
+                    <div style="font-size:14px; color:{it['color']}; font-weight:700; margin-bottom:8px;">{it['title']}</div>
+                    <div class="kpi-ring" data-target="{it['value']}" data-color="{it['color']}" style="width:140px;height:140px;border-radius:50%;margin:0 auto;position:relative;">
+                      <div class="ring-bg" style="position:absolute; inset:0; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(0,0,0,0.4); background: conic-gradient({it['color']} 0%, rgba(255,255,255,0.06) 0%);"></div>
+                      <div style="width:96px;height:96px;border-radius:50%; background: rgba(0,0,0,0.55); display:flex;align-items:center;justify-content:center; color:white; font-weight:700; font-size:20px; border:2px solid rgba(255,255,255,0.04);">
+                        <span class="kpi-number">0.00</span>
+                      </div>
                     </div>
+                    <div style="margin-top:8px; color:{C['muted']};">{it['label']}</div>
                   </div>
-                  <div class="kpi-label">{label}</div>
                 </div>
-                """, unsafe_allow_html=True)
+                """
+
+            kpi_html += "</div>"
+
+            # JS to animate rings (runs inside iframe created by components.html - safe)
+            kpi_js = f"""
+            <script>
+            (function(){{
+                const rings = document.querySelectorAll('.kpi-ring');
+                rings.forEach(r => {{
+                    const target = parseFloat(r.getAttribute('data-target')) || 0;
+                    const color = r.getAttribute('data-color') || '{C['accent1']}';
+                    const bg = r.querySelector('.ring-bg');
+                    const num = r.querySelector('.kpi-number');
+
+                    // animate using requestAnimationFrame
+                    let start = null;
+                    const duration = 1100;
+                    function step(ts) {{
+                        if (!start) start = ts;
+                        const progress = Math.min((ts - start) / duration, 1);
+                        const current = progress * target;
+                        bg.style.background = `conic-gradient(${color} ${current}%, rgba(255,255,255,0.06) 0%)`;
+                        num.innerText = current.toFixed(2);
+                        if (progress < 1) {{
+                            window.requestAnimationFrame(step);
+                        }} else {{
+                            bg.style.background = `conic-gradient(${color} ${target}%, rgba(255,255,255,0.06) 0%)`;
+                            num.innerText = target.toFixed(2);
+                        }}
+                    }}
+                    window.requestAnimationFrame(step);
+                }});
+            }})();
+            </script>
+            """
+
+            components.html(kpi_html + kpi_js, height=260, scrolling=False)
 
         # -------------------------
-        # Tab 2: 3D BLEU–EFC line (keeps the enhanced line)
+        # Tab 2: 3D BLEU–EFC Plotly chart
         # -------------------------
         with tab2:
-            st.markdown("### 3D BLEU–EFC Metric Trajectory (Gradient Line)")
+            st.markdown("### 3D BLEU–EFC Metric Trajectory")
             X = [mB["BLEU"], mE["BLEU"], mR["BLEU"]]
             Y = [mB["EFC"],  mE["EFC"],  mR["EFC"]]
             Z = [0.0, 0.5, 1.0]
@@ -307,18 +277,15 @@ if run_clicked:
                 x=X, y=Y, z=Z,
                 mode='markers+text',
                 marker=dict(size=8, color=[C["accent1"], C["accent2"], C["accent3"]], line=dict(width=2, color='white')),
-                text=labels,
-                textposition='top center',
-                name='Models'
+                text=labels, textposition='top center', name='Models'
             ))
-            # subtle ground surface
             xx, yy = np.meshgrid(np.linspace(0,1,6), np.linspace(0,1,6))
             fig3d.add_trace(go.Surface(x=xx, y=yy, z=np.zeros_like(xx), showscale=False, opacity=0.08, colorscale=[[0,'rgba(100,100,100,0.12)'],[1,'rgba(200,200,200,0.02)']]))
-            fig3d.update_layout(scene=dict(xaxis=dict(title='BLEU', range=[0,1]), yaxis=dict(title='EFC', range=[0,1]), zaxis=dict(title='Depth', showticklabels=False)), height=640, margin=dict(l=0,r=0,t=30,b=0), showlegend=False)
+            fig3d.update_layout(scene=dict(xaxis=dict(title='BLEU', range=[0,1]), yaxis=dict(title='EFC', range=[0,1]), zaxis=dict(title='Depth', showticklabels=False)), height=640, margin=dict(l=0,r=0,t=10,b=0), showlegend=False)
             st.plotly_chart(fig3d, use_container_width=True)
 
         # -------------------------
-        # Tab 3: Radar Insights
+        # Tab 3: Radar (Plotly)
         # -------------------------
         with tab3:
             cats = ["BLEU", "EFC", "Hallucination", "Semantic"]
@@ -330,53 +297,103 @@ if run_clicked:
             st.plotly_chart(figR, use_container_width=True)
 
         # -------------------------
-        # Tab 4: Advanced animated bars (Error & Similarity Analytics)
+        # Tab 4: Animated Bars — render via components.html (self-contained)
+        # This ensures animation JS runs reliably on Streamlit Cloud
         # -------------------------
         with tab4:
-            row1, row2 = st.columns([2,2])
-            # Hallucination bars
-            with row1:
-                st.markdown("<h4 style='margin-top:0;'>Hallucination Rate (Lower = Better)</h4>", unsafe_allow_html=True)
-                bars = [
-                    ("Baseline", mB["Hallucination"], "#ff4e50"),
-                    ("EACT", mE["Hallucination"], "#ffa600"),
-                    ("RG-CLD", mR["Hallucination"], "#ff2a68"),
-                ]
-                for name, val, color in bars:
-                    pct = round(val * 100, 2)
-                    st.markdown(f"""
-                    <div class="metric-card" style="margin-bottom:10px;">
-                      <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div class="metric-name">{name}</div>
-                        <div class="metric-value"><span class="bar-number">0</span>%</div>
-                      </div>
-                      <div class="metric-bar" data-target="{pct}" data-glow="{color}">
-                        <div class="metric-bar-fill" style="--glow:{color};"></div>
-                      </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+            # prepare bars data (Hallucination & Semantic)
+            halluc = [
+                {"name": "Baseline", "value": round(mB["Hallucination"] * 100, 2), "color": "#ff4e50"},
+                {"name": "EACT",     "value": round(mE["Hallucination"] * 100, 2), "color": "#ffa600"},
+                {"name": "RG-CLD",   "value": round(mR["Hallucination"] * 100, 2), "color": "#ff2a68"},
+            ]
+            semantic = [
+                {"name": "Baseline", "value": round(mB["Semantic"] * 100, 2), "color": "#30cfd0"},
+                {"name": "EACT",     "value": round(mE["Semantic"] * 100, 2), "color": "#6a5acd"},
+                {"name": "RG-CLD",   "value": round(mR["Semantic"] * 100, 2), "color": "#4facfe"},
+            ]
 
-            # Semantic similarity bars
-            with row2:
-                st.markdown("<h4 style='margin-top:0;'>Semantic Similarity (Higher = Better)</h4>", unsafe_allow_html=True)
-                bars2 = [
-                    ("Baseline", mB["Semantic"], "#30cfd0"),
-                    ("EACT", mE["Semantic"], "#6a5acd"),
-                    ("RG-CLD", mR["Semantic"], "#4facfe"),
-                ]
-                for name, val, color in bars2:
-                    pct = round(val * 100, 2)
-                    st.markdown(f"""
-                    <div class="metric-card" style="margin-bottom:10px;">
-                      <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div class="metric-name">{name}</div>
-                        <div class="metric-value"><span class="bar-number">0</span>%</div>
-                      </div>
-                      <div class="metric-bar" data-target="{pct}" data-glow="{color}">
-                        <div class="metric-bar-fill" style="--glow:{color};"></div>
-                      </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+            bars_html = "<div style='display:flex; gap:20px; justify-content:space-between;'>"
+
+            # left column (hallucination)
+            bars_html += "<div style='flex:1; max-width:48%;'>"
+            bars_html += f"<h4 style='margin-top:0;color:{C['text']}'>Hallucination Rate (Lower = Better)</h4>"
+            for b in halluc:
+                bars_html += f"""
+                <div style='background:{C['card_bg']}; padding:12px; border-radius:10px; margin-bottom:10px; border:1px solid rgba(255,255,255,0.06)'>
+                  <div style='display:flex; justify-content:space-between; align-items:center;'>
+                    <div style='font-weight:700; color:{C['text']}'>{b['name']}</div>
+                    <div style='font-weight:700; color:{C['muted']}'><span class='bar-number'>0</span>%</div>
+                  </div>
+                  <div class='metric-bar' data-target='{b['value']}' data-glow='{b['color']}' style='height:14px; border-radius:8px; background:rgba(0,0,0,0.12); overflow:hidden; margin-top:8px;'>
+                    <div class='metric-bar-fill' style='width:0%; height:100%; border-radius:8px;'></div>
+                  </div>
+                </div>
+                """
+
+            bars_html += "</div>"
+
+            # right column (semantic)
+            bars_html += "<div style='flex:1; max-width:48%;'>"
+            bars_html += f"<h4 style='margin-top:0;color:{C['text']}'>Semantic Similarity (Higher = Better)</h4>"
+            for b in semantic:
+                bars_html += f"""
+                <div style='background:{C['card_bg']}; padding:12px; border-radius:10px; margin-bottom:10px; border:1px solid rgba(255,255,255,0.06)'>
+                  <div style='display:flex; justify-content:space-between; align-items:center;'>
+                    <div style='font-weight:700; color:{C['text']}'>{b['name']}</div>
+                    <div style='font-weight:700; color:{C['muted']}'><span class='bar-number'>0</span>%</div>
+                  </div>
+                  <div class='metric-bar' data-target='{b['value']}' data-glow='{b['color']}' style='height:14px; border-radius:8px; background:rgba(0,0,0,0.12); overflow:hidden; margin-top:8px;'>
+                    <div class='metric-bar-fill' style='width:0%; height:100%; border-radius:8px;'></div>
+                  </div>
+                </div>
+                """
+
+            bars_html += "</div></div>"
+
+            # JS to animate bars and update numbers
+            bars_js = """
+            <script>
+            (function(){
+                const bars = Array.from(document.querySelectorAll('.metric-bar'));
+                bars.forEach(bar => {
+                    const target = parseFloat(bar.getAttribute('data-target')) || 0;
+                    const glow = bar.getAttribute('data-glow') || '#4facfe';
+                    const fill = bar.querySelector('.metric-bar-fill');
+                    const numberSpan = bar.parentElement.querySelector('.bar-number');
+
+                    // animate width
+                    setTimeout(() => {
+                        fill.style.transition = 'width 1.4s cubic-bezier(.2,.9,.2,1)';
+                        fill.style.width = target + '%';
+                        fill.style.background = glow;
+                        // glow effect via box-shadow
+                        fill.style.boxShadow = `0 8px 30px ${glow}55`;
+                    }, 60);
+
+                    // count up number
+                    if (numberSpan) {
+                        let start = null;
+                        const duration = 1100;
+                        function step(ts) {
+                            if (!start) start = ts;
+                            const prog = Math.min((ts - start) / duration, 1);
+                            const cur = Math.round(prog * target);
+                            numberSpan.innerText = cur;
+                            if (prog < 1) {
+                                window.requestAnimationFrame(step);
+                            } else {
+                                numberSpan.innerText = Math.round(target);
+                            }
+                        }
+                        window.requestAnimationFrame(step);
+                    }
+                });
+            })();
+            </script>
+            """
+
+            components.html(bars_html + bars_js, height=520, scrolling=True)
 
         # -------------------------
         # Tab 5: Scorecard table
@@ -390,81 +407,3 @@ if run_clicked:
                 "Hallucination": [mB["Hallucination"], mE["Hallucination"], mR["Hallucination"]],
                 "Semantic": [mB["Semantic"], mE["Semantic"], mR["Semantic"]],
             })
-
-        # ---------------------------------------------------------------------
-        # Inject JavaScript to animate KPI rings and bars + counting numbers
-        # We'll use streamlit.components.v1.html to safely run JS in the page.
-        # ---------------------------------------------------------------------
-        animate_js = f"""
-        <script>
-        (function(){{
-
-            // animate KPI rings: fill and number counting
-            const rings = Array.from(document.querySelectorAll('.kpi-ring'));
-            rings.forEach(r => {{
-                const target = parseFloat(r.getAttribute('data-target')) || 0;
-                const color = r.getAttribute('data-color') || '{C['accent1']}';
-                const ringBg = r.querySelector('.ring-bg');
-                const num = r.querySelector('.kpi-number');
-
-                // set CSS variable color
-                ringBg.style.setProperty('--color', color);
-                // animate fill: use requestAnimationFrame to increment
-                let start = null;
-                const duration = 1100;
-                function step(timestamp) {{
-                    if (!start) start = timestamp;
-                    const progress = Math.min((timestamp - start) / duration, 1);
-                    const current = progress * target;
-                    ringBg.style.background = `conic-gradient(${{color}} ${{current}}%, rgba(255,255,255,0.06) 0%)`;
-                    num.innerText = current.toFixed(2);
-                    if (progress < 1) {{
-                        window.requestAnimationFrame(step);
-                    }} else {{
-                        // final set
-                        ringBg.style.background = `conic-gradient(${{color}} ${{target}}%, rgba(255,255,255,0.06) 0%)`;
-                        num.innerText = target.toFixed(2);
-                    }}
-                }}
-                window.requestAnimationFrame(step);
-            }});
-
-            // animate bars: expand width and count numbers
-            const bars = Array.from(document.querySelectorAll('.metric-bar'));
-            bars.forEach(bar => {{
-                const target = parseFloat(bar.getAttribute('data-target')) || 0;
-                const glow = bar.getAttribute('data-glow') || '#4facfe';
-                const fill = bar.querySelector('.metric-bar-fill');
-                const numberSpan = bar.parentElement.querySelector('.bar-number') || null;
-
-                // animate width
-                setTimeout(() => {{
-                    fill.style.width = target + '%';
-                    fill.style.background = glow;
-                    fill.classList.add('end-glow');
-                    fill.style.setProperty('--glow-color', glow + '55');
-                }}, 50);
-
-                // count-up number
-                if (numberSpan) {{
-                    let start = null;
-                    const duration = 1100;
-                    function countStep(ts) {{
-                        if (!start) start = ts;
-                        const prog = Math.min((ts - start) / duration, 1);
-                        const cur = Math.floor(prog * target);
-                        numberSpan.innerText = cur;
-                        if (prog < 1) {{
-                            window.requestAnimationFrame(countStep);
-                        }} else {{
-                            numberSpan.innerText = Math.round(target);
-                        }}
-                    }}
-                    window.requestAnimationFrame(countStep);
-                }}
-            }});
-
-        }})();
-        </script>
-        """
-        components.html(animate_js, height=10, scrolling=False)
