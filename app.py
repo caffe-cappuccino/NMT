@@ -1,5 +1,6 @@
 import streamlit as st
 import matplotlib.pyplot as plt
+import numpy as np
 
 from models.baseline_model import baseline_translate
 from models.eact_model import eact_translate
@@ -7,122 +8,162 @@ from models.rgcld_model import rgcld_translate
 
 from utils.scoring import compute_bleu, compute_efc
 
-st.set_page_config(page_title="Reliable Machine Translation Dashboard", layout="wide")
-
-st.title("🌐 Reliable Machine Translation Framework")
-st.write("Compare model outputs and evaluation metrics for Baseline, EACT, and RG-CLD models.")
+st.set_page_config(
+    page_title="MT Evaluation Dashboard",
+    layout="wide"
+)
 
 # -------------------------------------------------------------------------
+# HEADER
+# -------------------------------------------------------------------------
+st.markdown("""
+    <h2 style="text-align:center; margin-bottom: 5px;">
+        🌐 Premium Machine Translation Evaluation Dashboard
+    </h2>
+    <p style="text-align:center; color:#888; font-size:16px;">
+        Analyze performance across Baseline, EACT, and RG-CLD models using advanced linguistic and factual metrics.
+    </p>
+    <hr>
+""", unsafe_allow_html=True)
+
+# =========================================================================
 # USER INPUT
-# -------------------------------------------------------------------------
-text = st.text_area("Enter text for translation:", height=150)
+# =========================================================================
+with st.container():
+    st.subheader("🔤 Input Text")
+    text = st.text_area("Enter text to evaluate:", height=120)
 
-# -------------------------------------------------------------------------
-# ON BUTTON CLICK
-# -------------------------------------------------------------------------
-if st.button("Translate"):
+# =========================================================================
+# BUTTON
+# =========================================================================
+if st.button("Run Evaluation"):
     if not text.strip():
         st.error("Please enter text first.")
     else:
-
-        # =====================================================================
-        # 1. MODEL TRANSLATIONS (THIS PART WAS NOT SHOWING EARLIER)
-        # =====================================================================
+        # ================================================================
+        # INTERNAL MODEL RUNS (TRANSLATIONS NOT DISPLAYED)
+        # ================================================================
         baseline_out = baseline_translate(text)
         eact_out = eact_translate(text)
         rgcld_out = rgcld_translate(text)
 
-        st.subheader("Translations")
+        # ------------------------------------------------------------------
+        # METRIC CALCULATIONS
+        # ------------------------------------------------------------------
+        def get_metrics(output):
+            bleu = compute_bleu(text, output)
+            efc = compute_efc(text, output)
+            halluc = round(1 - efc, 3)
+            sem_sim = round((bleu + efc) / 2, 3)
+            return bleu, efc, halluc, sem_sim
 
-        colT1, colT2, colT3 = st.columns(3)
+        bleu_b, efc_b, hall_b, sem_b = get_metrics(baseline_out)
+        bleu_e, efc_e, hall_e, sem_e = get_metrics(eact_out)
+        bleu_r, efc_r, hall_r, sem_r = get_metrics(rgcld_out)
 
-        with colT1:
-            st.markdown("### Baseline Transformer")
-            st.success(baseline_out)
+        # =========================================================================
+        # TOP METRIC CARDS (DASHBOARD KPIs)
+        # =========================================================================
+        st.subheader("📊 Key Performance Indicators")
 
-        with colT2:
-            st.markdown("### EACT Fine-Tuned")
-            st.success(eact_out)
+        kpi1, kpi2, kpi3 = st.columns(3)
 
-        with colT3:
-            st.markdown("### RG-CLD Retrieval-Guided")
-            st.success(rgcld_out)
+        with kpi1:
+            st.markdown(f"""
+                <div style="padding:20px; background:#f2f2f2; border-radius:10px;">
+                <h3 style="margin:0;">Baseline</h3>
+                <p>BLEU: <b>{bleu_b}</b></p>
+                <p>EFC: <b>{efc_b}</b></p>
+                </div>
+            """, unsafe_allow_html=True)
 
-        # =====================================================================
-        # 2. METRIC CALCULATIONS
-        # =====================================================================
+        with kpi2:
+            st.markdown(f"""
+                <div style="padding:20px; background:#f2f2f2; border-radius:10px;">
+                <h3 style="margin:0;">EACT Model</h3>
+                <p>BLEU: <b>{bleu_e}</b></p>
+                <p>EFC: <b>{efc_e}</b></p>
+                </div>
+            """, unsafe_allow_html=True)
 
-        # Baseline
-        bleu_baseline = compute_bleu(text, baseline_out)
-        efc_baseline = compute_efc(text, baseline_out)
-        halluc_baseline = round(1 - efc_baseline, 3)
-        semantic_baseline = round((bleu_baseline + efc_baseline) / 2, 3)
+        with kpi3:
+            st.markdown(f"""
+                <div style="padding:20px; background:#f2f2f2; border-radius:10px;">
+                <h3 style="margin:0;">RG-CLD Model</h3>
+                <p>BLEU: <b>{bleu_r}</b></p>
+                <p>EFC: <b>{efc_r}</b></p>
+                </div>
+            """, unsafe_allow_html=True)
 
-        # EACT
-        bleu_eact = compute_bleu(text, eact_out)
-        efc_eact = compute_efc(text, eact_out)
-        halluc_eact = round(1 - efc_eact, 3)
-        semantic_eact = round((bleu_eact + efc_eact) / 2, 3)
+        # =========================================================================
+        # TABS SECTION
+        # =========================================================================
+        tab1, tab2, tab3 = st.tabs(["📈 Primary Metrics", "📉 Advanced Metrics", "📊 Comparison Matrix"])
 
-        # RG-CLD
-        bleu_rgcld = compute_bleu(text, rgcld_out)
-        efc_rgcld = compute_efc(text, rgcld_out)
-        halluc_rgcld = round(1 - efc_rgcld, 3)
-        semantic_rgcld = round((bleu_rgcld + efc_rgcld) / 2, 3)
+        # -------------------------------------------------------------------------
+        # TAB 1 — PRIMARY METRICS
+        # -------------------------------------------------------------------------
+        with tab1:
+            st.write("### 📈 BLEU & EFC Metrics (Per Model)")
 
-        # =====================================================================
-        # 3. SIDE-BY-SIDE MODEL GRAPHS (BLEU + EFC)
-        # =====================================================================
-        st.subheader("Evaluation Metrics (Per Model)")
+            col1, col2, col3 = st.columns(3)
 
-        col1, col2, col3 = st.columns(3)
+            # Baseline Graph
+            with col1:
+                fig, ax = plt.subplots(figsize=(3,3))
+                ax.bar(["BLEU", "EFC"], [bleu_b, efc_b])
+                ax.set_ylim(0,1)
+                ax.set_title("Baseline")
+                st.pyplot(fig)
 
-        # ---- Baseline Chart ----
-        with col1:
-            fig1, ax1 = plt.subplots(figsize=(3, 3))
-            ax1.bar(["BLEU", "EFC"], [bleu_baseline, efc_baseline])
-            ax1.set_title("Baseline")
-            ax1.set_ylim(0, 1)
-            st.pyplot(fig1)
+            # EACT Graph
+            with col2:
+                fig, ax = plt.subplots(figsize=(3,3))
+                ax.bar(["BLEU", "EFC"], [bleu_e, efc_e])
+                ax.set_ylim(0,1)
+                ax.set_title("EACT")
+                st.pyplot(fig)
 
-        # ---- EACT Chart ----
-        with col2:
-            fig2, ax2 = plt.subplots(figsize=(3, 3))
-            ax2.bar(["BLEU", "EFC"], [bleu_eact, efc_eact])
-            ax2.set_title("EACT")
-            ax2.set_ylim(0, 1)
-            st.pyplot(fig2)
+            # RG-CLD Graph
+            with col3:
+                fig, ax = plt.subplots(figsize=(3,3))
+                ax.bar(["BLEU", "EFC"], [bleu_r, efc_r])
+                ax.set_ylim(0,1)
+                ax.set_title("RG-CLD")
+                st.pyplot(fig)
 
-        # ---- RG-CLD Chart ----
-        with col3:
-            fig3, ax3 = plt.subplots(figsize=(3, 3))
-            ax3.bar(["BLEU", "EFC"], [bleu_rgcld, efc_rgcld])
-            ax3.set_title("RG-CLD")
-            ax3.set_ylim(0, 1)
-            st.pyplot(fig3)
+        # -------------------------------------------------------------------------
+        # TAB 2 — ADVANCED METRICS
+        # -------------------------------------------------------------------------
+        with tab2:
+            st.write("### 🧠 Hallucination & Semantic Similarity Analysis")
 
+            colA, colB = st.columns(2)
 
-        # =====================================================================
-        # 4. ADVANCED METRICS (HALLUCINATION + SEMANTIC SIMILARITY)
-        # =====================================================================
-        st.subheader("Advanced Reliability Metrics")
+            with colA:
+                fig, ax = plt.subplots(figsize=(3,3))
+                ax.bar(["Baseline", "EACT", "RG-CLD"], [hall_b, hall_e, hall_r])
+                ax.set_title("Hallucination Rate")
+                ax.set_ylim(0, 1)
+                st.pyplot(fig)
 
-        colA, colB = st.columns(2)
+            with colB:
+                fig, ax = plt.subplots(figsize=(3,3))
+                ax.bar(["Baseline", "EACT", "RG-CLD"], [sem_b, sem_e, sem_r])
+                ax.set_title("Semantic Similarity")
+                ax.set_ylim(0, 1)
+                st.pyplot(fig)
 
-        # ---- Hallucination Rate Chart ----
-        with colA:
-            fig4, ax4 = plt.subplots(figsize=(3, 3))
-            ax4.bar(["Baseline", "EACT", "RG-CLD"],
-                    [halluc_baseline, halluc_eact, halluc_rgcld])
-            ax4.set_title("Hallucination Rate (Lower is Better)")
-            ax4.set_ylim(0, 1)
-            st.pyplot(fig4)
+        # -------------------------------------------------------------------------
+        # TAB 3 — COMPARISON MATRIX
+        # -------------------------------------------------------------------------
+        with tab3:
+            st.write("### 📊 Score Comparison Table")
 
-        # ---- Semantic Similarity Chart ----
-        with colB:
-            fig5, ax5 = plt.subplots(figsize=(3, 3))
-            ax5.bar(["Baseline", "EACT", "RG-CLD"],
-                    [semantic_baseline, semantic_eact, semantic_rgcld])
-            ax5.set_title("Semantic Similarity (Higher is Better)")
-            ax5.set_ylim(0, 1)
-            st.pyplot(fig5)
+            st.table({
+                "Model": ["Baseline", "EACT", "RG-CLD"],
+                "BLEU": [bleu_b, bleu_e, bleu_r],
+                "EFC": [efc_b, efc_e, efc_r],
+                "Hallucination Rate": [hall_b, hall_e, hall_r],
+                "Semantic Sim": [sem_b, sem_e, sem_r]
+            })
