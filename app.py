@@ -59,7 +59,7 @@ theme = st.sidebar.selectbox("Theme", ["Dark", "Light"])
 C = THEMES[theme]
 
 # --------------------------------------------------------------
-# CSS + FIXED TYPEWRITER WIDTH (cursor stops at last letter)
+# CSS — typewriter cursor disappears after typing
 # --------------------------------------------------------------
 st.markdown(f"""
 <style>
@@ -70,20 +70,32 @@ body {{
 
 @keyframes typing {{
     from {{ width: 0 }}
-    to {{ width: 96ch; }}  /* EXACT width of caption text */
+    to {{ width: 96ch; }}
 }}
 
-@keyframes blink {{
-    50% {{ border-color: transparent; }}
+@keyframes blinkCursor {{
+    0% {{ border-right-color: {C['text']}; }}
+    50% {{ border-right-color: transparent; }}
+    100% {{ border-right-color: {C['text']}; }}
+}}
+
+@keyframes hideCursor {{
+    from {{ border-right-color: {C['text']}; }}
+    to {{ border-right-color: transparent; }}
 }}
 
 .typewriter {{
     display: inline-block;
     white-space: nowrap;
     overflow: hidden;
+    width: 96ch;
     border-right: 3px solid {C['text']};
-    width: 96ch;                     /* CURSOR stops EXACTLY at last character */
-    animation: typing 3.5s steps(96, end), blink .75s step-end infinite;
+
+    animation:
+        typing 3.5s steps(96, end),
+        blinkCursor 0.8s step-end 3,
+        hideCursor 0.3s ease forwards 4.3s;
+
     font-size: 18px;
     color:{C['muted']};
 }}
@@ -115,13 +127,15 @@ body {{
 """, unsafe_allow_html=True)
 
 # --------------------------------------------------------------
-# HEADER + FIXED TYPEWRITER CAPTION
+# HEADER
 # --------------------------------------------------------------
 lottie_header = load_lottie("https://assets7.lottiefiles.com/packages/lf20_jcikwtux.json")
+
 col1, col2 = st.columns([1,4])
 with col1:
     if lottie_header:
         st_lottie(lottie_header, height=120)
+
 with col2:
     st.markdown(
         f"<h1 style='color:{C['text']}; margin:0;'>Neural Translation Evaluation & Insights Platform</h1>",
@@ -155,36 +169,30 @@ def get_metrics(src_text, out_text):
     }
 
 # --------------------------------------------------------------
-# RUN BUTTON (NO “Running evaluation…” TEXT)
+# RUN BUTTON + CLEAN LOADING ANIMATION
 # --------------------------------------------------------------
 if st.button("Run Evaluation"):
 
     if not text.strip():
-        st.error("Please enter text.")
+        st.error("Please enter text to evaluate.")
 
     else:
-        # Clean loading animation only
         loader = st.empty()
         with loader:
             st_lottie(loading_animation, height=200)
 
         time.sleep(2)
 
-        # Run models
         out_b = baseline_translate(text)
         out_e = eact_translate(text)
         out_r = rgcld_translate(text)
 
-        # Compute metrics
         mB = get_metrics(text, out_b)
         mE = get_metrics(text, out_e)
         mR = get_metrics(text, out_r)
 
         loader.empty()
 
-        # ----------------------------------------------------------
-        # TABS
-        # ----------------------------------------------------------
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "💎 KPI Rings",
             "📈 3D BLEU–EFC Line",
@@ -193,34 +201,26 @@ if st.button("Run Evaluation"):
             "📊 Comparison Table"
         ])
 
-        # ----------------------------------------------------------
-        # TAB 1 — KPI Rings
-        # ----------------------------------------------------------
+        # KPI Rings
         with tab1:
             c1, c2, c3 = st.columns(3)
-            for (title, mat, accent), col in zip(
-                [("Baseline", mB, C['acc1']),
-                 ("EACT", mE, C['acc2']),
-                 ("RG-CLD", mR, C['acc3'])],
+            for (title, m, color), col in zip(
+                [("Baseline", mB, C["acc1"]), ("EACT", mE, C["acc2"]), ("RG-CLD", mR, C["acc3"])],
                 [c1, c2, c3]
             ):
-                val = mat["BLEU"]
+                v = m["BLEU"]
                 col.markdown(f"""
                 <div class="kpi-glass">
-                  <h3 style='text-align:center; color:{accent}'>{title}</h3>
-                  <div class="kpi-circle" style="--value:{val*100}; --color:{accent}; --color-glow:{accent}55;">
-                    <div class="kpi-circle-inner">{val}</div>
+                  <h3 style='text-align:center;color:{color}'>{title}</h3>
+                  <div class="kpi-circle" style="--value:{v*100}; --color:{color}; --color-glow:{color}55;">
+                    <div class="kpi-circle-inner">{v}</div>
                   </div>
-                  <p style='text-align:center; color:{C['muted']}'>BLEU Score</p>
+                  <p style='text-align:center;color:{C['muted']}'>BLEU Score</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-        # ----------------------------------------------------------
-        # TAB 2 — 3D BLEU–EFC
-        # ----------------------------------------------------------
+        # 3D Line
         with tab2:
-            st.markdown("### 📈 3D BLEU–EFC Trajectory")
-
             X = [mB["BLEU"], mE["BLEU"], mR["BLEU"]]
             Y = [mB["EFC"], mE["EFC"], mR["EFC"]]
             Z = [0.0, 0.5, 1.0]
@@ -244,47 +244,41 @@ if st.button("Run Evaluation"):
                 textposition="top center"
             ))
 
-            fig.update_layout(height=620, showlegend=False)
+            fig.update_layout(height=620)
             st.plotly_chart(fig, use_container_width=True)
 
-        # ----------------------------------------------------------
-        # TAB 3 — Radar
-        # ----------------------------------------------------------
+        # Radar
         with tab3:
             cats = ["BLEU", "EFC", "Hallucination", "Semantic"]
             figR = go.Figure()
-            figR.add_trace(go.Scatterpolar(r=[mB[c] for c in cats], theta=cats, fill='toself'))
-            figR.add_trace(go.Scatterpolar(r=[mE[c] for c in cats], theta=cats, fill='toself'))
-            figR.add_trace(go.Scatterpolar(r=[mR[c] for c in cats], theta=cats, fill='toself'))
+            figR.add_trace(go.Scatterpolar(r=[mB[c] for c in cats], theta=cats, fill="toself"))
+            figR.add_trace(go.Scatterpolar(r=[mE[c] for c in cats], theta=cats, fill="toself"))
+            figR.add_trace(go.Scatterpolar(r=[mR[c] for c in cats], theta=cats, fill="toself"))
             figR.update_layout(height=620)
             st.plotly_chart(figR, use_container_width=True)
 
-        # ----------------------------------------------------------
-        # TAB 4 — Bars
-        # ----------------------------------------------------------
+        # Bars
         with tab4:
-            cA, cB = st.columns(2)
-            with cA:
-                st.markdown("### Hallucination Rate")
+            A, B = st.columns(2)
+            with A:
+                st.markdown("### Hallucination")
                 for name, m, clr in [("Baseline",mB,"#ff4e50"),("EACT",mE,"#ffa600"),("RG-CLD",mR,"#ff2a68")]:
                     v = m["Hallucination"]
                     st.markdown(f"<b>{name}</b>: {v}", unsafe_allow_html=True)
                     st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{v*100}%;background:{clr}'></div></div><br>", unsafe_allow_html=True)
 
-            with cB:
+            with B:
                 st.markdown("### Semantic Similarity")
                 for name, m, clr in [("Baseline",mB,"#30cfd0"),("EACT",mE,"#6a5acd"),("RG-CLD",mR,"#4facfe")]:
                     v = m["Semantic"]
                     st.markdown(f"<b>{name}</b>: {v}", unsafe_allow_html=True)
                     st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{v*100}%;background:{clr}'></div></div><br>", unsafe_allow_html=True)
 
-        # ----------------------------------------------------------
-        # TAB 5 — Table
-        # ----------------------------------------------------------
+        # Table
         with tab5:
             st.write("### Model Comparison Matrix")
             st.table({
-                "Model": ["Baseline", "EACT", "RG-CLD"],
+                "Model": ["Baseline","EACT","RG-CLD"],
                 "BLEU": [mB["BLEU"], mE["BLEU"], mR["BLEU"]],
                 "EFC": [mB["EFC"], mE["EFC"], mR["EFC"]],
                 "Hallucination": [mB["Hallucination"], mE["Hallucination"], mR["Hallucination"]],
