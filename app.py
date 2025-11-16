@@ -10,20 +10,23 @@ from utils.scoring import compute_bleu, compute_efc
 st.set_page_config(page_title="Reliable Machine Translation Dashboard", layout="wide")
 
 st.title("🌐 Reliable Machine Translation Framework")
-st.write("This interface compares model outputs and visualizes evaluation metrics across Baseline, EACT, and RG-CLD models.")
+st.write("Compare model outputs and evaluation metrics for Baseline, EACT, and RG-CLD models.")
 
 # -------------------------------------------------------------------------
 # USER INPUT
 # -------------------------------------------------------------------------
 text = st.text_area("Enter text for translation:", height=150)
 
+# -------------------------------------------------------------------------
+# ON BUTTON CLICK
+# -------------------------------------------------------------------------
 if st.button("Translate"):
     if not text.strip():
         st.error("Please enter text first.")
     else:
 
         # =====================================================================
-        # MODEL OUTPUTS
+        # 1. MODEL TRANSLATIONS (THIS PART WAS NOT SHOWING EARLIER)
         # =====================================================================
         baseline_out = baseline_translate(text)
         eact_out = eact_translate(text)
@@ -31,18 +34,24 @@ if st.button("Translate"):
 
         st.subheader("Translations")
 
-        st.write("### Baseline Transformer")
-        st.success(baseline_out)
+        colT1, colT2, colT3 = st.columns(3)
 
-        st.write("### EACT Fine-Tuned")
-        st.success(eact_out)
+        with colT1:
+            st.markdown("### Baseline Transformer")
+            st.success(baseline_out)
 
-        st.write("### RG-CLD Retrieval-Guided")
-        st.success(rgcld_out)
+        with colT2:
+            st.markdown("### EACT Fine-Tuned")
+            st.success(eact_out)
+
+        with colT3:
+            st.markdown("### RG-CLD Retrieval-Guided")
+            st.success(rgcld_out)
 
         # =====================================================================
-        # COMPUTE METRICS
+        # 2. METRIC CALCULATIONS
         # =====================================================================
+
         # Baseline
         bleu_baseline = compute_bleu(text, baseline_out)
         efc_baseline = compute_efc(text, baseline_out)
@@ -62,7 +71,7 @@ if st.button("Translate"):
         semantic_rgcld = round((bleu_rgcld + efc_rgcld) / 2, 3)
 
         # =====================================================================
-        # SIDE-BY-SIDE MODEL GRAPHS (BLEU + EFC)
+        # 3. SIDE-BY-SIDE MODEL GRAPHS (BLEU + EFC)
         # =====================================================================
         st.subheader("Evaluation Metrics (Per Model)")
 
@@ -92,8 +101,9 @@ if st.button("Translate"):
             ax3.set_ylim(0, 1)
             st.pyplot(fig3)
 
+
         # =====================================================================
-        # ADVANCED METRICS (HALLUCINATION + SEMANTIC SIMILARITY)
+        # 4. ADVANCED METRICS (HALLUCINATION + SEMANTIC SIMILARITY)
         # =====================================================================
         st.subheader("Advanced Reliability Metrics")
 
@@ -104,7 +114,7 @@ if st.button("Translate"):
             fig4, ax4 = plt.subplots(figsize=(3, 3))
             ax4.bar(["Baseline", "EACT", "RG-CLD"],
                     [halluc_baseline, halluc_eact, halluc_rgcld])
-            ax4.set_title("Hallucination Rate (Lower = Better)")
+            ax4.set_title("Hallucination Rate (Lower is Better)")
             ax4.set_ylim(0, 1)
             st.pyplot(fig4)
 
@@ -113,6 +123,6 @@ if st.button("Translate"):
             fig5, ax5 = plt.subplots(figsize=(3, 3))
             ax5.bar(["Baseline", "EACT", "RG-CLD"],
                     [semantic_baseline, semantic_eact, semantic_rgcld])
-            ax5.set_title("Semantic Similarity (Higher = Better)")
+            ax5.set_title("Semantic Similarity (Higher is Better)")
             ax5.set_ylim(0, 1)
             st.pyplot(fig5)
