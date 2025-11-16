@@ -91,47 +91,58 @@ body {{
 """, unsafe_allow_html=True)
 
 # --------------------------------------------------------------
-# Header with Lottie
+# Header with Lottie & NEW Caption
 # --------------------------------------------------------------
 lottie = load_lottie("https://assets7.lottiefiles.com/packages/lf20_jcikwtux.json")
 col1, col2 = st.columns([1,4])
 with col1:
     if lottie:
         st_lottie(lottie, height=120)
+
 with col2:
-    st.markdown(f"<h1 style='color:{C['text']}; margin:0;'>Neural Translation Evaluation & Insights Platform</h1>", unsafe_allow_html=True)
-    st.markdown(f"<div style='color:{C['muted']};'>Single click: run evaluation → all tabs update • BLEU & EFC focused 3D line</div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<h1 style='color:{C['text']}; margin:0;'>Neural Translation Evaluation & Insights Platform</h1>",
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        f"<div style='color:{C['muted']}; font-size:18px; margin-top:4px;'>"
+        f"AI-driven analytics for benchmarking translation quality, coherence, and linguistic fidelity."
+        f"</div>",
+        unsafe_allow_html=True
+    )
 
 st.write("---")
 
 # --------------------------------------------------------------
-# Input
+# INPUT
 # --------------------------------------------------------------
 text = st.text_area("Enter text to evaluate:", height=140)
 
 # --------------------------------------------------------------
-# Metric helper
+# METRICS
 # --------------------------------------------------------------
 def get_metrics(src_text, out_text):
     bleu = compute_bleu(src_text, out_text)
     efc = compute_efc(src_text, out_text)
     halluc = round(1 - efc, 3)
     semantic = round((bleu + efc) / 2, 3)
-    # clip into [0,1]
-    bleu = float(np.clip(bleu, 0.0, 1.0))
-    efc = float(np.clip(efc, 0.0, 1.0))
-    halluc = float(np.clip(halluc, 0.0, 1.0))
-    semantic = float(np.clip(semantic, 0.0, 1.0))
-    return {"BLEU": bleu, "EFC": efc, "Hallucination": halluc, "Semantic": semantic}
+
+    # clip to [0,1]
+    return {
+        "BLEU": float(np.clip(bleu, 0, 1)),
+        "EFC": float(np.clip(efc, 0, 1)),
+        "Hallucination": float(np.clip(halluc, 0, 1)),
+        "Semantic": float(np.clip(semantic, 0, 1))
+    }
 
 # --------------------------------------------------------------
-# Run evaluation button (single control)
+# RUN BUTTON
 # --------------------------------------------------------------
 if st.button("Run Evaluation"):
     if not text.strip():
         st.error("Please enter text to evaluate.")
     else:
-        # run (hidden) model inference
+        # Run models
         out_b = baseline_translate(text)
         out_e = eact_translate(text)
         out_r = rgcld_translate(text)
@@ -141,7 +152,7 @@ if st.button("Run Evaluation"):
         mR = get_metrics(text, out_r)
 
         # ----------------------------------------------------------
-        # Tabs
+        # TABS
         # ----------------------------------------------------------
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "💎 KPI Rings",
@@ -152,7 +163,7 @@ if st.button("Run Evaluation"):
         ])
 
         # ----------------------------------------------------------
-        # Tab 1: KPI Rings
+        # TAB 1 — KPI Rings
         # ----------------------------------------------------------
         with tab1:
             c1, c2, c3 = st.columns(3)
@@ -174,71 +185,70 @@ if st.button("Run Evaluation"):
                 """, unsafe_allow_html=True)
 
         # ----------------------------------------------------------
-        # Tab 2: Enhanced 3D BLEU–EFC Line (smooth gradient + dotted + mesh + planes)
+        # TAB 2 — Enhanced 3D BLEU–EFC Line
         # ----------------------------------------------------------
         with tab2:
-            st.markdown("### 📈 3D BLEU–EFC Trajectory — smooth gradient line with markers & mesh")
+            st.markdown("### 📈 3D BLEU–EFC Trajectory (Gradient + Mesh + Dotted Line)")
 
-            # Coordinates (BLEU vs EFC). Use depth just to separate points visually.
             X = [mB["BLEU"], mE["BLEU"], mR["BLEU"]]
             Y = [mB["EFC"],  mE["EFC"],  mR["EFC"]]
-            Z = [0.0, 0.5, 1.0]  # depth positions for visual clarity
+            Z = [0.0, 0.5, 1.0]
             labels = ["Baseline", "EACT", "RG-CLD"]
 
-            # Create fine-grained interpolation for smooth curve
             t_original = np.linspace(0, 1, len(X))
             t_fine = np.linspace(0, 1, 200)
+
             xs = np.interp(t_fine, t_original, X)
             ys = np.interp(t_fine, t_original, Y)
             zs = np.interp(t_fine, t_original, Z)
 
-            # 3D figure
             fig = go.Figure()
 
-            # Gradient colored line (colorscale mapped to BLEU values along the curve)
             fig.add_trace(go.Scatter3d(
                 x=xs, y=ys, z=zs,
                 mode='lines',
                 line=dict(
                     width=8,
-                    color=xs,               # color mapped to BLEU across curve
+                    color=xs,
                     colorscale='Turbo',
-                    showscale=False,
-                    dash='dot'              # dotted effect
+                    dash='dot'
                 ),
                 hoverinfo='none',
                 name='Trajectory'
             ))
 
-            # Add colored markers with white outline for model points
             fig.add_trace(go.Scatter3d(
                 x=X, y=Y, z=Z,
                 mode='markers+text',
-                marker=dict(size=9, color=[C['acc1'], C['acc2'], C['acc3']], symbol='circle', line=dict(width=2, color='white')),
+                marker=dict(size=9, color=[C['acc1'], C['acc2'], C['acc3']],
+                            line=dict(width=2, color='white')),
                 text=labels,
                 textposition='top center',
                 name='Models'
             ))
 
-            # Add transparent planes for BLEU-EFC axes (visual ground)
-            # Plane at z=0
             xx, yy = np.meshgrid(np.linspace(0,1,6), np.linspace(0,1,6))
             zz0 = np.zeros_like(xx)
-            fig.add_trace(go.Surface(x=xx, y=yy, z=zz0, showscale=False, opacity=0.10, colorscale=[[0, 'rgba(100,100,100,0.12)'], [1, 'rgba(200,200,200,0.02)']]))
+            fig.add_trace(go.Surface(
+                x=xx, y=yy, z=zz0,
+                showscale=False, opacity=0.10,
+                colorscale=[[0, 'rgba(100,100,100,0.12)'], [1, 'rgba(200,200,200,0.02)']]
+            ))
 
-            # Add a secondary faint mesh surface tilted slightly as a boundary
             zz1 = 0.2 + 0.1 * (xx + yy)
-            fig.add_trace(go.Surface(x=xx, y=yy, z=zz1, showscale=False, opacity=0.06, colorscale='Blues'))
+            fig.add_trace(go.Surface(
+                x=xx, y=yy, z=zz1,
+                showscale=False, opacity=0.06,
+                colorscale='Blues'
+            ))
 
-            # Layout polish
             fig.update_layout(
                 scene=dict(
-                    xaxis=dict(title='BLEU', range=[0, 1], backgroundcolor='rgba(0,0,0,0)'),
-                    yaxis=dict(title='EFC', range=[0, 1], backgroundcolor='rgba(0,0,0,0)'),
-                    zaxis=dict(title='Depth', backgroundcolor='rgba(0,0,0,0)', showticklabels=False),
-                    aspectmode='auto'
+                    xaxis=dict(title='BLEU', range=[0,1], backgroundcolor='rgba(0,0,0,0)'),
+                    yaxis=dict(title='EFC',  range=[0,1], backgroundcolor='rgba(0,0,0,0)'),
+                    zaxis=dict(title='Depth', showticklabels=False),
                 ),
-                margin=dict(l=0, r=0, t=60, b=0),
+                margin=dict(l=0,r=0,t=50,b=0),
                 height=640,
                 showlegend=False
             )
@@ -246,39 +256,47 @@ if st.button("Run Evaluation"):
             st.plotly_chart(fig, use_container_width=True)
 
         # ----------------------------------------------------------
-        # Tab 3: Radar comparison
+        # TAB 3 — Radar Chart
         # ----------------------------------------------------------
         with tab3:
             cats = ["BLEU", "EFC", "Hallucination", "Semantic"]
             figR = go.Figure()
-            figR.add_trace(go.Scatterpolar(r=[mB[c] for c in cats], theta=cats, fill='toself', name='Baseline'))
-            figR.add_trace(go.Scatterpolar(r=[mE[c] for c in cats], theta=cats, fill='toself', name='EACT'))
-            figR.add_trace(go.Scatterpolar(r=[mR[c] for c in cats], theta=cats, fill='toself', name='RG-CLD'))
+            figR.add_trace(go.Scatterpolar(r=[mB[c] for c in cats], theta=cats, fill='toself', name="Baseline"))
+            figR.add_trace(go.Scatterpolar(r=[mE[c] for c in cats], theta=cats, fill='toself', name="EACT"))
+            figR.add_trace(go.Scatterpolar(r=[mR[c] for c in cats], theta=cats, fill='toself', name="RG-CLD"))
             figR.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0,1])), height=620)
             st.plotly_chart(figR, use_container_width=True)
 
         # ----------------------------------------------------------
-        # Tab 4: Advanced Metrics (animated bars)
+        # TAB 4 — Advanced Metrics
         # ----------------------------------------------------------
         with tab4:
             colA, colB = st.columns(2)
 
             with colA:
                 st.markdown("### Hallucination Rate (Lower = Better)")
-                for name, metrics, color in [("Baseline", mB, "#ff4e50"), ("EACT", mE, "#ffa600"), ("RG-CLD", mR, "#ff2a68")]:
+                for name, metrics, color in [
+                    ("Baseline", mB, "#ff4e50"),
+                    ("EACT", mE, "#ffa600"),
+                    ("RG-CLD", mR, "#ff2a68")
+                ]:
                     val = metrics["Hallucination"]
-                    st.markdown(f"<div style='font-weight:700'>{name}: {val}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<b>{name}</b>: {val}", unsafe_allow_html=True)
                     st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{val*100}%; background:{color};'></div></div><br>", unsafe_allow_html=True)
 
             with colB:
                 st.markdown("### Semantic Similarity (Higher = Better)")
-                for name, metrics, color in [("Baseline", mB, "#30cfd0"), ("EACT", mE, "#6a5acd"), ("RG-CLD", mR, "#4facfe")]:
+                for name, metrics, color in [
+                    ("Baseline", mB, "#30cfd0"),
+                    ("EACT", mE, "#6a5acd"),
+                    ("RG-CLD", mR, "#4facfe")
+                ]:
                     val = metrics["Semantic"]
-                    st.markdown(f"<div style='font-weight:700'>{name}: {val}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<b>{name}</b>: {val}", unsafe_allow_html=True)
                     st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{val*100}%; background:{color};'></div></div><br>", unsafe_allow_html=True)
 
         # ----------------------------------------------------------
-        # Tab 5: Comparison table
+        # TAB 5 — Table
         # ----------------------------------------------------------
         with tab5:
             st.write("### Model Comparison Matrix")
