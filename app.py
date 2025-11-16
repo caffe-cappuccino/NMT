@@ -59,7 +59,7 @@ theme = st.sidebar.selectbox("Theme", ["Dark", "Light"])
 C = THEMES[theme]
 
 # --------------------------------------------------------------
-# CSS + Typewriter Animation
+# CSS + FIXED TYPEWRITER WIDTH (cursor stops at last letter)
 # --------------------------------------------------------------
 st.markdown(f"""
 <style>
@@ -70,18 +70,20 @@ body {{
 
 @keyframes typing {{
     from {{ width: 0 }}
-    to {{ width: 100% }}
+    to {{ width: 96ch; }}  /* EXACT width of caption text */
 }}
+
 @keyframes blink {{
     50% {{ border-color: transparent; }}
 }}
 
 .typewriter {{
-    width: 100%;
-    overflow: hidden;
+    display: inline-block;
     white-space: nowrap;
+    overflow: hidden;
     border-right: 3px solid {C['text']};
-    animation: typing 3.5s steps(60, end), blink .75s step-end infinite;
+    width: 96ch;                     /* CURSOR stops EXACTLY at last character */
+    animation: typing 3.5s steps(96, end), blink .75s step-end infinite;
     font-size: 18px;
     color:{C['muted']};
 }}
@@ -113,14 +115,13 @@ body {{
 """, unsafe_allow_html=True)
 
 # --------------------------------------------------------------
-# Header + TYPEWRITER CAPTION
+# HEADER + FIXED TYPEWRITER CAPTION
 # --------------------------------------------------------------
 lottie_header = load_lottie("https://assets7.lottiefiles.com/packages/lf20_jcikwtux.json")
 col1, col2 = st.columns([1,4])
 with col1:
     if lottie_header:
         st_lottie(lottie_header, height=120)
-
 with col2:
     st.markdown(
         f"<h1 style='color:{C['text']}; margin:0;'>Neural Translation Evaluation & Insights Platform</h1>",
@@ -154,24 +155,22 @@ def get_metrics(src_text, out_text):
     }
 
 # --------------------------------------------------------------
-# RUN BUTTON WITHOUT SPINNER TEXT
+# RUN BUTTON (NO “Running evaluation…” TEXT)
 # --------------------------------------------------------------
 if st.button("Run Evaluation"):
 
     if not text.strip():
-        st.error("Please enter text to evaluate.")
+        st.error("Please enter text.")
 
     else:
-        # Show ONLY the loading animation (NO spinner, NO text)
-        loading_box = st.empty()
+        # Clean loading animation only
+        loader = st.empty()
+        with loader:
+            st_lottie(loading_animation, height=200)
 
-        with loading_box:
-            st_lottie(loading_animation, height=200, key="loader")
-
-        # Fake delay so UI looks smooth
         time.sleep(2)
 
-        # Perform translations
+        # Run models
         out_b = baseline_translate(text)
         out_e = eact_translate(text)
         out_r = rgcld_translate(text)
@@ -181,8 +180,7 @@ if st.button("Run Evaluation"):
         mE = get_metrics(text, out_e)
         mR = get_metrics(text, out_r)
 
-        # Clear loading animation
-        loading_box.empty()
+        loader.empty()
 
         # ----------------------------------------------------------
         # TABS
@@ -206,27 +204,26 @@ if st.button("Run Evaluation"):
                  ("RG-CLD", mR, C['acc3'])],
                 [c1, c2, c3]
             ):
-                bval = mat["BLEU"]
+                val = mat["BLEU"]
                 col.markdown(f"""
                 <div class="kpi-glass">
-                  <h3 style='text-align:center; color:{accent}; margin:0'>{title}</h3>
-                  <div class="kpi-circle" style="--value:{bval*100}; --color:{accent}; --color-glow:{accent}55;">
-                    <div class="kpi-circle-inner">{bval}</div>
+                  <h3 style='text-align:center; color:{accent}'>{title}</h3>
+                  <div class="kpi-circle" style="--value:{val*100}; --color:{accent}; --color-glow:{accent}55;">
+                    <div class="kpi-circle-inner">{val}</div>
                   </div>
-                  <p style='text-align:center; color:{C['muted']}; margin-top:8px;'>BLEU Score</p>
+                  <p style='text-align:center; color:{C['muted']}'>BLEU Score</p>
                 </div>
                 """, unsafe_allow_html=True)
 
         # ----------------------------------------------------------
-        # TAB 2 — 3D BLEU–EFC Line
+        # TAB 2 — 3D BLEU–EFC
         # ----------------------------------------------------------
         with tab2:
-            st.markdown("### 📈 3D BLEU–EFC Trajectory (Gradient, Dotted, Mesh)")
+            st.markdown("### 📈 3D BLEU–EFC Trajectory")
 
             X = [mB["BLEU"], mE["BLEU"], mR["BLEU"]]
-            Y = [mB["EFC"],  mE["EFC"],  mR["EFC"]]
+            Y = [mB["EFC"], mE["EFC"], mR["EFC"]]
             Z = [0.0, 0.5, 1.0]
-            labels = ["Baseline", "EACT", "RG-CLD"]
 
             t = np.linspace(0, 1, 200)
             xs = np.interp(t, [0, 0.5, 1], X)
@@ -234,33 +231,20 @@ if st.button("Run Evaluation"):
             zs = np.interp(t, [0, 0.5, 1], Z)
 
             fig = go.Figure()
-
             fig.add_trace(go.Scatter3d(
                 x=xs, y=ys, z=zs,
-                mode='lines',
-                line=dict(width=8, color=xs, colorscale='Turbo', dash='dot'),
-                hoverinfo='none'
+                mode="lines",
+                line=dict(width=8, color=xs, colorscale="Turbo", dash="dot")
             ))
-
             fig.add_trace(go.Scatter3d(
                 x=X, y=Y, z=Z,
-                mode='markers+text',
-                marker=dict(size=9, color=[C['acc1'], C['acc2'], C['acc3']], line=dict(width=2, color='white')),
-                text=labels, textposition='top center'
+                mode="markers+text",
+                marker=dict(size=10, color=[C['acc1'], C['acc2'], C['acc3']], line=dict(width=2, color="white")),
+                text=["Baseline", "EACT", "RG-CLD"],
+                textposition="top center"
             ))
 
-            xx, yy = np.meshgrid(np.linspace(0,1,6), np.linspace(0,1,6))
-            fig.add_trace(go.Surface(x=xx, y=yy, z=np.zeros_like(xx), showscale=False, opacity=0.10, colorscale=[[0,'rgba(100,100,100,0.12)'],[1,'rgba(200,200,200,0.02)']]))
-
-            fig.update_layout(
-                scene=dict(
-                    xaxis=dict(title='BLEU', range=[0,1]),
-                    yaxis=dict(title='EFC',  range=[0,1]),
-                    zaxis=dict(title='Depth', showticklabels=False)
-                ),
-                height=630
-            )
-
+            fig.update_layout(height=620, showlegend=False)
             st.plotly_chart(fig, use_container_width=True)
 
         # ----------------------------------------------------------
@@ -272,7 +256,7 @@ if st.button("Run Evaluation"):
             figR.add_trace(go.Scatterpolar(r=[mB[c] for c in cats], theta=cats, fill='toself'))
             figR.add_trace(go.Scatterpolar(r=[mE[c] for c in cats], theta=cats, fill='toself'))
             figR.add_trace(go.Scatterpolar(r=[mR[c] for c in cats], theta=cats, fill='toself'))
-            figR.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0,1])), height=630)
+            figR.update_layout(height=620)
             st.plotly_chart(figR, use_container_width=True)
 
         # ----------------------------------------------------------
@@ -283,16 +267,16 @@ if st.button("Run Evaluation"):
             with cA:
                 st.markdown("### Hallucination Rate")
                 for name, m, clr in [("Baseline",mB,"#ff4e50"),("EACT",mE,"#ffa600"),("RG-CLD",mR,"#ff2a68")]:
-                    v=m["Hallucination"]
+                    v = m["Hallucination"]
                     st.markdown(f"<b>{name}</b>: {v}", unsafe_allow_html=True)
-                    st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{v*100}%;background:{clr}'></div></div><br>",unsafe_allow_html=True)
+                    st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{v*100}%;background:{clr}'></div></div><br>", unsafe_allow_html=True)
 
             with cB:
                 st.markdown("### Semantic Similarity")
                 for name, m, clr in [("Baseline",mB,"#30cfd0"),("EACT",mE,"#6a5acd"),("RG-CLD",mR,"#4facfe")]:
-                    v=m["Semantic"]
+                    v = m["Semantic"]
                     st.markdown(f"<b>{name}</b>: {v}", unsafe_allow_html=True)
-                    st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{v*100}%;background:{clr}'></div></div><br>",unsafe_allow_html=True)
+                    st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{v*100}%;background:{clr}'></div></div><br>", unsafe_allow_html=True)
 
         # ----------------------------------------------------------
         # TAB 5 — Table
@@ -300,7 +284,7 @@ if st.button("Run Evaluation"):
         with tab5:
             st.write("### Model Comparison Matrix")
             st.table({
-                "Model": ["Baseline","EACT","RG-CLD"],
+                "Model": ["Baseline", "EACT", "RG-CLD"],
                 "BLEU": [mB["BLEU"], mE["BLEU"], mR["BLEU"]],
                 "EFC": [mB["EFC"], mE["EFC"], mR["EFC"]],
                 "Hallucination": [mB["Hallucination"], mE["Hallucination"], mR["Hallucination"]],
