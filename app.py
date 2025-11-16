@@ -6,33 +6,32 @@ import requests
 from streamlit_lottie import st_lottie
 import time
 
-# Import your model wrappers and scoring utils
+# Import model wrappers + scoring utils
 from models.baseline_model import baseline_translate
 from models.eact_model import eact_translate
 from models.rgcld_model import rgcld_translate
 from utils.scoring import compute_bleu, compute_efc
 
 # --------------------------------------------------------------
-# Page config
+# PAGE CONFIG
 # --------------------------------------------------------------
 st.set_page_config(page_title="Neural Translation Evaluation & Insights Platform", layout="wide")
 
 # --------------------------------------------------------------
-# Lottie loader
+# LOTTIE LOADER
 # --------------------------------------------------------------
 def load_lottie(url):
     try:
         r = requests.get(url, timeout=5)
-        if r.status_code == 200:
-            return r.json()
+        return r.json() if r.status_code == 200 else None
     except:
         return None
-    return None
 
 loading_animation = load_lottie("https://assets2.lottiefiles.com/packages/lf20_usmfx6bp.json")
+header_animation = load_lottie("https://assets7.lottiefiles.com/packages/lf20_jcikwtux.json")
 
 # --------------------------------------------------------------
-# Themes
+# THEMES
 # --------------------------------------------------------------
 THEMES = {
     "Dark": {
@@ -59,7 +58,7 @@ theme = st.sidebar.selectbox("Theme", ["Dark", "Light"])
 C = THEMES[theme]
 
 # --------------------------------------------------------------
-# CSS + Typewriter Animation
+# CSS + TYPEWRITER
 # --------------------------------------------------------------
 st.markdown(f"""
 <style>
@@ -108,19 +107,20 @@ body {{
     display:flex;align-items:center;justify-content:center;
     font-size:22px;font-weight:700;color:white;
 }}
+
 .metric-bar {{ height:16px;border-radius:10px;background:#333; overflow:hidden; }}
 .metric-bar-fill {{ height:100%; border-radius:10px; transition: width 1.6s ease; }}
+
 </style>
 """, unsafe_allow_html=True)
 
 # --------------------------------------------------------------
-# Header with Lottie + TYPEWRITER CAPTION
+# HEADER
 # --------------------------------------------------------------
-lottie_header = load_lottie("https://assets7.lottiefiles.com/packages/lf20_jcikwtux.json")
 col1, col2 = st.columns([1,4])
 with col1:
-    if lottie_header:
-        st_lottie(lottie_header, height=120)
+    if header_animation:
+        st_lottie(header_animation, height=120)
 
 with col2:
     st.markdown(
@@ -145,8 +145,10 @@ text = st.text_area("Enter text to evaluate:", height=140)
 def get_metrics(src_text, out_text):
     bleu = compute_bleu(src_text, out_text)
     efc = compute_efc(src_text, out_text)
-    halluc = round(1 - efc, 3)
-    semantic = round((bleu + efc) / 2, 3)
+
+    halluc = 1 - efc
+    semantic = (bleu + efc) / 2
+
     return {
         "BLEU": float(np.clip(bleu, 0, 1)),
         "EFC": float(np.clip(efc, 0, 1)),
@@ -155,37 +157,34 @@ def get_metrics(src_text, out_text):
     }
 
 # --------------------------------------------------------------
-# RUN BUTTON + LOADING ANIMATION
+# RUN BUTTON + INLINE LOADING ANIMATION
 # --------------------------------------------------------------
+
+loading_placeholder = st.empty()   # << animation appears HERE
+
 if st.button("Run Evaluation"):
     if not text.strip():
-        st.error("Please enter text to evaluate.")
+        st.error("Please enter text first.")
     else:
 
-        with st.spinner("Running evaluation..."):
-            loading_col = st.empty()
-            loading_col_lottie = st.empty()
-
-            # display loading animation
-            with loading_col_lottie:
+        # Show loading animation BELOW button
+        with loading_placeholder:
+            if loading_animation:
                 st_lottie(loading_animation, height=180)
 
-            # Simulated processing time
-            time.sleep(2)
+        time.sleep(1.5)
 
-            # run models
-            out_b = baseline_translate(text)
-            out_e = eact_translate(text)
-            out_r = rgcld_translate(text)
+        # Run models
+        out_b = baseline_translate(text)
+        out_e = eact_translate(text)
+        out_r = rgcld_translate(text)
 
-            # calculate metrics
-            mB = get_metrics(text, out_b)
-            mE = get_metrics(text, out_e)
-            mR = get_metrics(text, out_r)
+        mB = get_metrics(text, out_b)
+        mE = get_metrics(text, out_e)
+        mR = get_metrics(text, out_r)
 
-            # remove loading animation
-            loading_col.empty()
-            loading_col_lottie.empty()
+        # Remove animation
+        loading_placeholder.empty()
 
         # ----------------------------------------------------------
         # TABS
@@ -199,20 +198,20 @@ if st.button("Run Evaluation"):
         ])
 
         # ----------------------------------------------------------
-        # TAB 1 — KPI Rings
+        # TAB 1 – KPI RINGS
         # ----------------------------------------------------------
         with tab1:
             c1, c2, c3 = st.columns(3)
-            for (title, mat, accent), col in zip(
+            for (title, metrics, accent), col in zip(
                 [("Baseline", mB, C['acc1']),
                  ("EACT", mE, C['acc2']),
                  ("RG-CLD", mR, C['acc3'])],
                 [c1, c2, c3]
             ):
-                bval = mat["BLEU"]
+                bval = metrics["BLEU"]
                 col.markdown(f"""
                 <div class="kpi-glass">
-                  <h3 style='text-align:center; color:{accent}; margin:0'>{title}</h3>
+                  <h3 style='text-align:center; color:{accent}'>{title}</h3>
                   <div class="kpi-circle" style="--value:{bval*100}; --color:{accent}; --color-glow:{accent}55;">
                     <div class="kpi-circle-inner">{bval}</div>
                   </div>
@@ -221,14 +220,14 @@ if st.button("Run Evaluation"):
                 """, unsafe_allow_html=True)
 
         # ----------------------------------------------------------
-        # TAB 2 — Enhanced 3D BLEU–EFC Line (Gradient + Dotted)
+        # TAB 2 – 3D BLEU–EFC LINE
         # ----------------------------------------------------------
         with tab2:
-            st.markdown("### 📈 3D BLEU–EFC Trajectory (Gradient, Dotted, Mesh Surfaces)")
+            st.markdown("### 📈 3D BLEU–EFC Trajectory (Gradient, Dotted, Mesh)")
 
             X = [mB["BLEU"], mE["BLEU"], mR["BLEU"]]
-            Y = [mB["EFC"],  mE["EFC"],  mR["EFC"]]
-            Z = [0.0, 0.5, 1.0]
+            Y = [mB["EFC"], mE["EFC"], mR["EFC"]]
+            Z = [0, 0.5, 1]
             labels = ["Baseline", "EACT", "RG-CLD"]
 
             t_original = np.linspace(0, 1, len(X))
@@ -243,28 +242,25 @@ if st.button("Run Evaluation"):
             fig.add_trace(go.Scatter3d(
                 x=xs, y=ys, z=zs,
                 mode='lines',
-                line=dict(
-                    width=8,
-                    color=xs,
-                    colorscale='Turbo',
-                    dash='dot'
-                ),
+                line=dict(width=8, color=xs, colorscale='Turbo', dash='dot'),
                 hoverinfo='none'
             ))
 
             fig.add_trace(go.Scatter3d(
                 x=X, y=Y, z=Z,
                 mode='markers+text',
-                marker=dict(size=9, color=[C['acc1'], C['acc2'], C['acc3']],
+                marker=dict(size=10, color=[C['acc1'], C['acc2'], C['acc3']],
                             line=dict(width=2, color='white')),
                 text=labels,
                 textposition='top center'
             ))
 
-            xx, yy = np.meshgrid(np.linspace(0,1,6), np.linspace(0,1,6))
-            fig.add_trace(go.Surface(x=xx, y=yy, z=np.zeros_like(xx),
-                                     showscale=False, opacity=0.10,
-                                     colorscale=[[0,'rgba(100,100,100,0.12)'],[1,'rgba(200,200,200,0.02)']]))
+            xx, yy = np.meshgrid(np.linspace(0,1,5), np.linspace(0,1,5))
+            fig.add_trace(go.Surface(
+                x=xx, y=yy, z=np.zeros_like(xx),
+                opacity=0.1, showscale=False,
+                colorscale=[[0,'rgba(130,130,130,0.15)'],[1,'rgba(200,200,200,0.02)']]
+            ))
 
             fig.update_layout(
                 scene=dict(
@@ -272,31 +268,37 @@ if st.button("Run Evaluation"):
                     yaxis=dict(title='EFC',  range=[0,1]),
                     zaxis=dict(title='Depth', showticklabels=False)
                 ),
-                height=640
+                height=650
             )
 
             st.plotly_chart(fig, use_container_width=True)
 
         # ----------------------------------------------------------
-        # TAB 3 — Radar
+        # TAB 3 – RADAR
         # ----------------------------------------------------------
         with tab3:
             cats = ["BLEU", "EFC", "Hallucination", "Semantic"]
             figR = go.Figure()
+
             figR.add_trace(go.Scatterpolar(r=[mB[c] for c in cats], theta=cats, fill='toself', name="Baseline"))
             figR.add_trace(go.Scatterpolar(r=[mE[c] for c in cats], theta=cats, fill='toself', name="EACT"))
             figR.add_trace(go.Scatterpolar(r=[mR[c] for c in cats], theta=cats, fill='toself', name="RG-CLD"))
-            figR.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0,1])), height=630)
+
+            figR.update_layout(
+                polar=dict(radialaxis=dict(visible=True, range=[0,1])),
+                height=620
+            )
+
             st.plotly_chart(figR, use_container_width=True)
 
         # ----------------------------------------------------------
-        # TAB 4 — Advanced Metrics
+        # TAB 4 – ADVANCED METRICS
         # ----------------------------------------------------------
         with tab4:
             colA, colB = st.columns(2)
 
             with colA:
-                st.markdown("### Hallucination Rate (Lower = Better)")
+                st.markdown("### Hallucination Rate")
                 for name, metrics, color in [
                     ("Baseline", mB, "#ff4e50"),
                     ("EACT", mE, "#ffa600"),
@@ -307,7 +309,7 @@ if st.button("Run Evaluation"):
                     st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{val*100}%; background:{color};'></div></div><br>", unsafe_allow_html=True)
 
             with colB:
-                st.markdown("### Semantic Similarity (Higher = Better)")
+                st.markdown("### Semantic Similarity")
                 for name, metrics, color in [
                     ("Baseline", mB, "#30cfd0"),
                     ("EACT", mE, "#6a5acd"),
@@ -318,7 +320,7 @@ if st.button("Run Evaluation"):
                     st.markdown(f"<div class='metric-bar'><div class='metric-bar-fill' style='width:{val*100}%; background:{color};'></div></div><br>", unsafe_allow_html=True)
 
         # ----------------------------------------------------------
-        # TAB 5 — Table
+        # TAB 5 – TABLE
         # ----------------------------------------------------------
         with tab5:
             st.write("### Model Comparison Matrix")
