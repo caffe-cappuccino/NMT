@@ -1,67 +1,62 @@
 
-
-# Neural Machine Translation Insights & Evaluation Platform
+# ⚡ Neural Machine Translation Insights & Evaluation Platform
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.8-green.svg)
+![Status](https://img.shields.io/badge/build-stable-success)
 
-An end-to-end interactive platform for evaluating, comparing, and visualizing Neural Machine Translation (NMT) models.  
-Designed to streamline experimentation, boost interpretability, and deliver deep insights into translation quality.
-
----
-
-## 🚀 Overview
-
-This platform empowers researchers and engineers to:
-
-- Benchmark a **baseline Transformer** against advanced NMT variants.
-- Evaluate translations using **BLEU** and **Entity-Focused Correctness (EFC)**.
-- Interactively visualize outputs, metrics, and semantic alignment.
-- Test, compare, and debug real-world translation behaviours quickly through a clean Streamlit UI.
-
-Perfect for rapid experimentation, research projects, and production-ready evaluation workflows.
+A lightweight, developer-friendly platform for benchmarking, debugging, and interpreting Neural Machine Translation (NMT) models.  
+Built for engineers who want **clarity in outputs**, **control over metrics**, and **speed in experimentation**.
 
 ---
 
-## 🔍 Features
+## 🧠 What This Platform Delivers
 
-- **Model Variants Included**
-  - Baseline Transformer
-  - Entity-Aware Contrastive Fine-Tuning (EACT)
-  - Retrieval-Guided Constrained Lattice Decoding (RG-CLD)
+- ⚙️ **Side-by-side comparison** of multiple NMT models  
+- 📊 **BLEU** + **Entity-Focused Correctness (EFC)** for semantic evaluation  
+- 🖥️ **Streamlit-powered UI** for rapid iteration & testing  
+- 🔍 Visual debugging tools to understand model failures  
+- 🔧 Modular codebase that fits naturally into research or production R&D
 
-- **Metrics**
-  - BLEU Score
-  - Entity-Focused Correctness (EFC)
-
-- **Streamlit UI**
-  - Enter or upload source text
-  - Generate model outputs
-  - Compare side-by-side translations
-  - Visual metric breakdowns, graphs, and insights
-
-- **Plug-and-Play Architecture**
-  - Add new models easily
-  - Add new evaluation metrics
-  - Extend visualizations or integrate into pipelines
+This repo is crafted to give you **real insights**, not just output strings.
 
 ---
 
-## 🧰 Installation & Setup
+## 🚀 Core Features
 
-### 1. Clone the repository
+### 🏗 Model Variants
+- Transformer (Baseline)
+- Entity-Aware Contrastive Fine-Tuning (EACT)
+- Retrieval-Guided Constrained Lattice Decoding (RG-CLD)
+
+### 📐 Metrics
+- BLEU Score
+- Entity-Focused Correctness (EFC)  
+  *(Because token-level metrics alone don’t tell the whole story.)*
+
+### 🖥 Developer UI
+- Real-time inference  
+- Multi-model output comparison  
+- Entity-level alignment visualizations  
+- Metric plots & debugging hooks  
+
+---
+
+## ⚡ Quickstart
+
+### Clone
 ```bash
 git clone https://github.com/caffe-cappuccino/Neural_Machine_Translation_Insights_Evaluation_Platform.git
 cd Neural_Machine_Translation_Insights_Evaluation_Platform
 ````
 
-### 2. Install dependencies
+### Install
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Launch the Streamlit app
+### Run
 
 ```bash
 streamlit run app.py
@@ -69,63 +64,75 @@ streamlit run app.py
 
 ---
 
-## 📂 Project Structure
+## 📂 Directory Layout
 
 ```
-Neural_Machine_Translation_Insights_Evaluation_Platform/
-│
-├── models/            # Pre-trained models & retrieval assets
-├── utils/             # Metrics, preprocessing, helper utilities
-├── app.py             # Main Streamlit application
-├── requirements.txt   # Python dependencies
+.
+├── models/            # Checkpoints, retrieval files, model weights
+├── utils/             # Metrics, preprocessors, helpers
+├── app.py             # Streamlit frontend
+├── requirements.txt
 └── README.md
 ```
 
----
-
-## ✨ How to Use
-
-1. Run the app using Streamlit.
-2. Enter text or upload a dataset file.
-3. Generate translations using each model.
-4. Compare BLEU & EFC across outputs.
-5. Explore visual insights – entity matches, error segments, metric scores, plots.
-6. Export logs or integrate into your workflow.
+Everything is modular. Everything is hackable.
 
 ---
 
-## 🔧 Extending the Platform
+## 🧩 Workflow
 
-You can enhance the system by:
+1. Input text or upload a dataset
+2. Generate translations across selected models
+3. Compare metrics (BLEU + EFC)
+4. Explore visual breakdowns
+5. Debug entity mismatches, drift, hallucinations
+6. Iterate fast. Deploy faster.
 
-* Adding new NMT architectures (e.g., mBART, Marian, LLaMA-based models).
-* Integrating metrics like COMET, BLEURT, Token-Level F1, or custom scoring.
-* Building advanced dashboards (A/B comparison, error tagging, drift detection).
-* Automating evaluations for CI/CD pipelines.
+---
+
+## 🔧 Extend Like a Pro
+
+Adding a new model?
+
+```bash
+# drop model files → /models
+# implement wrapper → /utils
+# register in UI → app.py
+```
+
+Adding a new metric?
+
+```bash
+# write metric function → /utils
+# add to evaluation pipeline
+# visualize in Streamlit
+```
+
+This repo is designed with **clean separations**, **functional modules**, and **plug-and-play architecture**.
 
 ---
 
 ## 📖 References
 
-* Vaswani et al. *“Attention Is All You Need”* (2017)
-* Research on Entity-Aware/Contrastive NMT Fine-Tuning
-* Retrieval-Guided Decoding Frameworks
+* *Attention Is All You Need*, Vaswani et al. (2017)
+* Research on Entity-Aware MT Fine-Tuning
+* Retrieval-guided decoding approaches
 
 ---
 
-## 🤝 Contributing
+## 🤝 Contributions
 
-Contributions are warmly welcomed!
-Feel free to open issues, suggest features, or submit pull requests.
+Pull requests, issue reports, and model extensions are always welcome.
+If you break something, improve something, or optimize something — ship it 🚀
 
 ---
 
 ## 📝 License
 
-This project is released under the **MIT License**.
+MIT License — free to build, break, improve, and ship.
 
 ---
 
-Thanks for exploring this platform!
-Let's elevate machine translation evaluation to the next level 🚀✨
+**Built for engineers who care about clarity, metrics, and control.**
+Happy hacking ⚡
 
